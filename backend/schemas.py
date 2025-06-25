@@ -155,5 +155,16 @@ class FeedbackRequest(FeedbackRequestBase):
     class Config:
         from_attributes = True
 
+class Notification(BaseModel):
+    id: int
+    user_id: int
+    message: str
+    read: bool
+    created_at: datetime
+    link: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
 class Token(BaseModel):
     access_token: str 

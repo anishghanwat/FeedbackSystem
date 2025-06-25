@@ -10,6 +10,8 @@ import FeedbackList from './components/FeedbackList';
 import Profile from './components/Profile';
 import Navbar from './components/Navbar';
 import { Toaster } from 'react-hot-toast';
+import FeedbackRequestList from './components/FeedbackRequestList';
+import FeedbackDetail from './components/FeedbackDetail';
 
 function PrivateRoute({ children, allowedRoles }) {
     const { user, loading } = useAuth();
@@ -74,6 +76,22 @@ function AppRoutes() {
                         element={
                             <PrivateRoute>
                                 <FeedbackList />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/feedback/:id"
+                        element={
+                            <PrivateRoute>
+                                <FeedbackDetail />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/feedback-requests"
+                        element={
+                            <PrivateRoute allowedRoles={['manager']}>
+                                <FeedbackRequestList />
                             </PrivateRoute>
                         }
                     />

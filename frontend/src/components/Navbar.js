@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { LogOut, User, MessageSquare, Plus, Settings, ChevronDown } from 'lucide-react';
+import NotificationBell from './NotificationBell';
 
 function Navbar() {
     const { user, logout } = useAuth();
@@ -50,7 +51,8 @@ function Navbar() {
                         </div>
                     </div>
 
-                    <div className="flex items-center">
+                    <div className="flex items-center space-x-4">
+                        <NotificationBell />
                         {/* User Menu */}
                         <div className="relative">
                             <button

@@ -47,6 +47,7 @@ class User(Base):
     # Relationships
     feedback_given = relationship("Feedback", foreign_keys="Feedback.manager_id", back_populates="manager")
     feedback_received = relationship("Feedback", foreign_keys="Feedback.employee_id", back_populates="employee")
+    notifications = relationship("Notification", back_populates="user")
 
 class Feedback(Base):
     __tablename__ = "feedback"
@@ -83,4 +84,16 @@ class FeedbackRequest(Base):
     completed_at = Column(DateTime(timezone=True), nullable=True)
 
     employee = relationship("User", foreign_keys=[employee_id])
-    manager = relationship("User", foreign_keys=[manager_id]) 
+    manager = relationship("User", foreign_keys=[manager_id])
+
+class Notification(Base):
+    __tablename__ = "notifications"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    message = Column(String, nullable=False)
+    read = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    link = Column(String, nullable=True) # Optional link to navigate to on click
+
+    user = relationship("User", back_populates="notifications") 

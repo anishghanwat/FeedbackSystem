@@ -5,7 +5,7 @@ from datetime import datetime
 import jwt
 from passlib.context import CryptContext
 import models
-from models import User, Feedback, UserRole, Sentiment, FeedbackRequest, FeedbackRequestStatus, Tag
+from models import User, Feedback, UserRole, Sentiment, FeedbackRequest, FeedbackRequestStatus, Tag, Notification
 from schemas import FeedbackCreate, FeedbackUpdate, DashboardStats, EmployeeFeedbackSummary, UserRegistration, UserUpdate, Tag as TagSchema
 from fastapi import HTTPException
 
@@ -119,6 +119,16 @@ def create_feedback(feedback: FeedbackCreate, manager_id: int, db: Session) -> F
     db.add(db_feedback)
     db.commit()
     db.refresh(db_feedback)
+    
+    # Notify employee
+    manager = db.query(User).filter(User.id == manager_id).first()
+    create_notification(
+        db=db,
+        user_id=feedback.employee_id,
+        message=f"You have new feedback from {manager.name}.",
+        link=f"/feedback/{db_feedback.id}"
+    )
+
     return db_feedback
 
 def get_feedback_by_id(feedback_id: int, db: Session) -> Optional[Feedback]:
@@ -225,6 +235,16 @@ def create_feedback_request(employee_id: int, manager_id: int, db: Session) -> F
     db.add(request)
     db.commit()
     db.refresh(request)
+    
+    # Notify manager
+    employee = db.query(User).filter(User.id == employee_id).first()
+    create_notification(
+        db=db,
+        user_id=manager_id,
+        message=f"{employee.name} has requested feedback.",
+        link=f"/feedback-requests"
+    )
+
     return request
 
 def get_feedback_requests_for_manager(manager_id: int, db: Session):
@@ -274,6 +294,16 @@ def add_feedback_comment(db: Session, feedback_id: int, comment: str, user_id: i
     db_feedback.comment = comment
     db.commit()
     db.refresh(db_feedback)
+
+    # Notify manager
+    employee = db.query(User).filter(User.id == user_id).first()
+    create_notification(
+        db=db,
+        user_id=db_feedback.manager_id,
+        message=f"{employee.name} commented on your feedback.",
+        link=f"/feedback/{db_feedback.id}"
+    )
+
     return db_feedback
 
 def update_feedback_comment(db: Session, feedback_id: int, comment: str, user_id: int) -> Feedback:
@@ -307,4 +337,39 @@ def delete_feedback(db: Session, feedback_id: int) -> bool:
         db.delete(db_feedback)
         db.commit()
         return True
-    return False 
+    return False
+
+# Notification services
+def create_notification(db: Session, user_id: int, message: str, link: Optional[str] = None) -> Notification:
+    """Create a new notification for a user."""
+    notification = Notification(
+        user_id=user_id,
+        message=message,
+        link=link
+    )
+    db.add(notification)
+    db.commit()
+    db.refresh(notification)
+    return notification
+
+def get_notifications_for_user(db: Session, user_id: int) -> List[Notification]:
+    """Get all notifications for a specific user, newest first."""
+    return db.query(Notification).filter(Notification.user_id == user_id).order_by(Notification.created_at.desc()).all()
+
+def mark_notification_as_read(db: Session, notification_id: int, user_id: int) -> Optional[Notification]:
+    """Mark a specific notification as read."""
+    notification = db.query(Notification).filter(
+        Notification.id == notification_id,
+        Notification.user_id == user_id
+    ).first()
+    if notification:
+        notification.read = True
+        db.commit()
+        db.refresh(notification)
+    return notification
+
+def mark_all_notifications_as_read(db: Session, user_id: int) -> bool:
+    """Mark all notifications for a user as read."""
+    db.query(Notification).filter(Notification.user_id == user_id).update({"read": True})
+    db.commit()
+    return True 
