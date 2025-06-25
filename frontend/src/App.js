@@ -11,6 +11,7 @@ import Profile from './components/Profile';
 import Navbar from './components/Navbar';
 import { Toaster } from 'react-hot-toast';
 import FeedbackRequestList from './components/FeedbackRequestList';
+import FeedbackRequestForm from './components/FeedbackRequestForm';
 import FeedbackDetail from './components/FeedbackDetail';
 
 function PrivateRoute({ children, allowedRoles }) {
@@ -92,6 +93,14 @@ function AppRoutes() {
                         element={
                             <PrivateRoute allowedRoles={['manager']}>
                                 <FeedbackRequestList />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/feedback-request/new"
+                        element={
+                            <PrivateRoute allowedRoles={['employee']}>
+                                <FeedbackRequestForm />
                             </PrivateRoute>
                         }
                     />

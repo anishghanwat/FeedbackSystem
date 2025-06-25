@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../api';
 import Select from 'react-select';
-import { MessageSquare, CheckCircle, Clock, Edit, Trash2, XCircle, Tag } from 'lucide-react';
+import { Trash2, XCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import ReactMarkdown from 'react-markdown';
+import FeedbackItem from './FeedbackItem';
 
 function FeedbackList() {
     const [feedback, setFeedback] = useState([]);
@@ -20,6 +20,8 @@ function FeedbackList() {
     const [comment, setComment] = useState("");
     const [editingCommentId, setEditingCommentId] = useState(null);
     const [showAuthorIds, setShowAuthorIds] = useState([]);
+    // Tab state for classification
+    const [activeTab, setActiveTab] = useState('all');
 
     useEffect(() => {
         fetchFeedback();
@@ -95,14 +97,6 @@ function FeedbackList() {
         navigate(`/feedback/new?edit=${feedbackId}`);
     };
 
-    const getSentimentColor = (sentiment) => {
-        switch (sentiment) {
-            case 'positive': return 'text-green-600 bg-green-100';
-            case 'negative': return 'text-red-600 bg-red-100';
-            default: return 'text-gray-600 bg-gray-100';
-        }
-    };
-
     const formatDate = (dateString) => {
         return new Date(dateString).toLocaleDateString('en-US', {
             year: 'numeric',
@@ -142,6 +136,35 @@ function FeedbackList() {
         }
     };
 
+    // Classification logic for employees
+    let sentFeedback = [];
+    let receivedFromManagers = [];
+    let receivedFromPeers = [];
+    if (user?.role === 'employee') {
+        sentFeedback = feedback.filter(item => item.manager && item.manager.id === user.id);
+        receivedFromManagers = feedback.filter(item => item.employee && item.employee.id === user.id && item.manager && item.manager.role === 'manager');
+        receivedFromPeers = feedback.filter(item => item.employee && item.employee.id === user.id && item.manager && item.manager.role === 'employee' && item.manager.id !== user.id);
+    }
+
+    // Prepare tab data
+    const allFeedback = user?.role === 'employee'
+        ? [...sentFeedback, ...receivedFromManagers, ...receivedFromPeers]
+        : filteredFeedback;
+    const tabs = [
+        { key: 'all', label: 'All', count: allFeedback.length },
+        { key: 'sent', label: 'Sent', count: sentFeedback.length },
+        { key: 'received', label: 'Received', count: receivedFromManagers.length + receivedFromPeers.length },
+        { key: 'fromManagers', label: 'From Managers', count: receivedFromManagers.length },
+        { key: 'fromPeers', label: 'From Peers', count: receivedFromPeers.length },
+    ];
+
+    // Filter feedback to display based on active tab
+    let feedbackToDisplay = allFeedback;
+    if (activeTab === 'sent') feedbackToDisplay = sentFeedback;
+    if (activeTab === 'received') feedbackToDisplay = [...receivedFromManagers, ...receivedFromPeers];
+    if (activeTab === 'fromManagers') feedbackToDisplay = receivedFromManagers;
+    if (activeTab === 'fromPeers') feedbackToDisplay = receivedFromPeers;
+
     if (loading) {
         return (
             <div className="flex items-center justify-center h-64">
@@ -151,26 +174,67 @@ function FeedbackList() {
     }
 
     return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <h1 className="text-2xl font-bold text-gray-900">
-                    {user?.role === 'manager' ? 'Feedback Given' : 'My Feedback'}
-                </h1>
+        <>
+            {/* Tabs for classification */}
+            <div className="flex space-x-2 mb-4">
+                {tabs.map(tab => (
+                    <button
+                        key={tab.key}
+                        onClick={() => setActiveTab(tab.key)}
+                        className={`px-4 py-2 rounded-full flex items-center space-x-2 transition-colors duration-150
+                            ${activeTab === tab.key ? 'bg-white text-black font-bold shadow' : 'bg-gray-800 text-white'}`}
+                    >
+                        {activeTab === tab.key && <span className="h-2 w-2 bg-blue-500 rounded-full mr-2"></span>}
+                        <span>{tab.label}</span>
+                        <span className="ml-1">{tab.count}</span>
+                    </button>
+                ))}
             </div>
-
-            <div className="bg-white p-4 shadow rounded-lg">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Filter by Tags:</label>
-                <Select
-                    isMulti
-                    options={allTags}
-                    value={selectedTags}
-                    onChange={setSelectedTags}
-                    placeholder="Select tags to filter..."
-                    className="react-select-container"
-                    classNamePrefix="react-select"
-                />
+            <div className="space-y-6">
+                <div className="flex justify-between items-center">
+                    <h1 className="text-2xl font-bold text-gray-900">
+                        {user?.role === 'manager' ? 'Feedback Given' : 'My Feedback'}
+                    </h1>
+                </div>
+                <div className="bg-white p-4 shadow rounded-lg">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Filter by Tags:</label>
+                    <Select
+                        isMulti
+                        options={allTags}
+                        value={selectedTags}
+                        onChange={setSelectedTags}
+                        placeholder="Select tags to filter..."
+                        className="react-select-container"
+                        classNamePrefix="react-select"
+                    />
+                </div>
+                {/* Feedback list based on active tab */}
+                {feedbackToDisplay.length === 0 ? (
+                    <div className="bg-white shadow rounded-lg p-4 text-gray-500">No feedback found.</div>
+                ) : (
+                    <div className="space-y-4">
+                        {feedbackToDisplay.map((item) => (
+                            <FeedbackItem
+                                key={item.id}
+                                item={item}
+                                user={user}
+                                showAuthorIds={showAuthorIds}
+                                setShowAuthorIds={setShowAuthorIds}
+                                editingCommentId={editingCommentId}
+                                setEditingCommentId={setEditingCommentId}
+                                comment={comment}
+                                setComment={setComment}
+                                handleCommentSubmit={handleCommentSubmit}
+                                handleAcknowledge={handleAcknowledge}
+                                handleUnacknowledge={handleUnacknowledge}
+                                handleEdit={handleEdit}
+                                openDeleteModal={openDeleteModal}
+                                formatDate={formatDate}
+                            />
+                        ))}
+                    </div>
+                )}
             </div>
-
             {/* Delete Confirmation Modal */}
             {showDeleteModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
@@ -211,224 +275,8 @@ function FeedbackList() {
                     </div>
                 </div>
             )}
-
-            {filteredFeedback.length === 0 ? (
-                <div className="bg-white shadow rounded-lg">
-                    <div className="px-6 py-12 text-center">
-                        <MessageSquare className="mx-auto h-12 w-12 text-gray-400" />
-                        <h3 className="mt-2 text-sm font-medium text-gray-900">No feedback yet</h3>
-                        <p className="mt-1 text-sm text-gray-500">
-                            {user?.role === 'manager'
-                                ? 'You haven\'t given any feedback yet.'
-                                : 'You haven\'t received any feedback yet.'
-                            }
-                        </p>
-                    </div>
-                </div>
-            ) : (
-                <div className="space-y-4">
-                    {filteredFeedback.map((item) => (
-                        <div key={item.id} className="bg-white shadow rounded-lg">
-                            <div className="px-6 py-4">
-                                <div className="flex items-start justify-between">
-                                    <div className="flex-1">
-                                        <div className="flex items-center space-x-3 mb-2">
-                                            <h4 className="font-medium text-gray-800">
-                                                Feedback from {(() => {
-                                                    if (user?.role === 'manager' && item.anonymous && item.visible_to_manager) {
-                                                        if (showAuthorIds.includes(item.id)) {
-                                                            return item.manager?.name || 'Unknown';
-                                                        } else {
-                                                            return (
-                                                                <button
-                                                                    className="text-blue-600 underline text-sm ml-1"
-                                                                    onClick={() => setShowAuthorIds(prev => [...prev, item.id])}
-                                                                >
-                                                                    Show Author
-                                                                </button>
-                                                            );
-                                                        }
-                                                    }
-                                                    if (item.manager && item.manager.name === 'Anonymous') return 'Anonymous';
-                                                    if (!item.manager) return 'Anonymous';
-                                                    return item.manager.name;
-                                                })()} for {item.employee?.name}
-                                            </h4>
-                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getSentimentColor(item.sentiment)}`}>
-                                                {item.sentiment}
-                                            </span>
-                                            {item.acknowledged && (
-                                                <span
-                                                    className="relative inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium text-green-800 bg-green-100 group"
-                                                    title={item.acknowledged_at ? `Acknowledged on ${formatDate(item.acknowledged_at)}` : 'Acknowledged'}
-                                                >
-                                                    <CheckCircle className="h-3 w-3 mr-1" />
-                                                    Acknowledged
-                                                </span>
-                                            )}
-                                            {!item.acknowledged && user?.role === 'employee' && (
-                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium text-yellow-800 bg-yellow-100">
-                                                    <Clock className="h-3 w-3 mr-1" />
-                                                    Pending
-                                                </span>
-                                            )}
-                                        </div>
-
-                                        {item.tags && item.tags.length > 0 && (
-                                            <div className="flex items-center flex-wrap gap-2 mb-3">
-                                                <Tag className="h-4 w-4 text-gray-400" />
-                                                {item.tags.map(tag => (
-                                                    <span key={tag.id} className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                                        {tag.name}
-                                                    </span>
-                                                ))}
-                                            </div>
-                                        )}
-
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-4">
-                                            <div>
-                                                <h5 className="text-sm font-medium text-gray-700 mb-2">Strengths</h5>
-                                                <div className="bg-green-50 p-3 rounded-md">
-                                                    {(() => {
-                                                        const val = item.strengths;
-                                                        if (typeof val !== 'string' && typeof val !== 'number') {
-                                                            console.warn('Unexpected type for strengths:', val);
-                                                            return null;
-                                                        }
-                                                        return <ReactMarkdown>{String(val)}</ReactMarkdown>;
-                                                    })()}
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <h5 className="text-sm font-medium text-gray-700 mb-2">Areas to Improve</h5>
-                                                <div className="bg-yellow-50 p-3 rounded-md">
-                                                    {(() => {
-                                                        const val = item.improvements;
-                                                        if (typeof val !== 'string' && typeof val !== 'number') {
-                                                            console.warn('Unexpected type for improvements:', val);
-                                                            return null;
-                                                        }
-                                                        return <ReactMarkdown>{String(val)}</ReactMarkdown>;
-                                                    })()}
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {item.comment && (
-                                            <div className="mt-4">
-                                                <h5 className="text-sm font-medium text-gray-700 mb-2">Employee's Comment</h5>
-                                                <div className="bg-blue-50 p-3 rounded-md">
-                                                    {(() => {
-                                                        const val = item.comment;
-                                                        if (typeof val !== 'string' && typeof val !== 'number') {
-                                                            console.warn('Unexpected type for comment:', val);
-                                                            return null;
-                                                        }
-                                                        return <ReactMarkdown>{String(val)}</ReactMarkdown>;
-                                                    })()}
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {/* Form to add a comment */}
-                                        {user?.role === 'employee' && item.acknowledged && !item.comment && (
-                                            <div className="mt-4">
-                                                {editingCommentId === item.id ? (
-                                                    <div className="space-y-2">
-                                                        <textarea
-                                                            className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
-                                                            rows="3"
-                                                            placeholder="Add your comment..."
-                                                            value={comment}
-                                                            onChange={(e) => setComment(e.target.value)}
-                                                        ></textarea>
-                                                        <div className="flex justify-end space-x-2">
-                                                            <button
-                                                                className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200"
-                                                                onClick={() => setEditingCommentId(null)}
-                                                            >
-                                                                Cancel
-                                                            </button>
-                                                            <button
-                                                                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
-                                                                onClick={() => handleCommentSubmit(item.id)}
-                                                            >
-                                                                Submit Comment
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                ) : (
-                                                    <button
-                                                        className="text-sm text-blue-600 hover:underline"
-                                                        onClick={() => {
-                                                            setEditingCommentId(item.id);
-                                                            setComment(""); // Clear previous comment text
-                                                        }}
-                                                    >
-                                                        Add a comment...
-                                                    </button>
-                                                )}
-                                            </div>
-                                        )}
-
-                                        <div className="border-t border-gray-200 mt-4 pt-3 flex items-center justify-between">
-                                            <div className="flex items-center space-x-3">
-                                                <span>Created on {formatDate(item.created_at)}</span>
-                                                {item.updated_at && item.updated_at !== item.created_at && (
-                                                    <span>Updated on {formatDate(item.updated_at)}</span>
-                                                )}
-                                            </div>
-                                            <div className="flex items-center space-x-3">
-                                                {!item.acknowledged && user?.role === 'employee' && (
-                                                    <button
-                                                        onClick={() => handleAcknowledge(item.id)}
-                                                        className="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700"
-                                                    >
-                                                        <CheckCircle className="h-3 w-3 mr-1" />
-                                                        Acknowledge
-                                                    </button>
-                                                )}
-
-                                                {item.acknowledged && user?.role === 'employee' && (
-                                                    <button
-                                                        onClick={() => handleUnacknowledge(item.id)}
-                                                        className="inline-flex items-center px-3 py-1 border border-yellow-300 text-sm font-medium rounded-md text-yellow-700 bg-white hover:bg-yellow-50"
-                                                    >
-                                                        <Clock className="h-3 w-3 mr-1" />
-                                                        Unacknowledge
-                                                    </button>
-                                                )}
-
-                                                {/* Show edit/delete if current user is the author (manager or employee) */}
-                                                {(user && item.manager && user.id === item.manager.id) && (
-                                                    <>
-                                                        <button
-                                                            onClick={() => handleEdit(item.id)}
-                                                            className="inline-flex items-center px-3 py-1 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-                                                        >
-                                                            <Edit className="h-3 w-3 mr-1" />
-                                                            Edit
-                                                        </button>
-                                                        <button
-                                                            onClick={() => openDeleteModal(item.id)}
-                                                            className="inline-flex items-center px-3 py-1 border border-red-300 text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50"
-                                                        >
-                                                            <Trash2 className="h-3 w-3 mr-1" />
-                                                            Delete
-                                                        </button>
-                                                    </>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            )}
-        </div>
-    );
+        </>
+    )
 }
 
 export default FeedbackList; 

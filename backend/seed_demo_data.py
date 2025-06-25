@@ -3,7 +3,7 @@
 Seed the database with demo users and feedback for testing/demo purposes.
 """
 from database import engine, SessionLocal
-from models import Base, User, Feedback, UserRole, Sentiment, Tag
+from models import Base, User, Feedback, UserRole, Sentiment, Tag, FeedbackRequest, FeedbackRequestStatus, Notification
 from services import get_password_hash
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
@@ -40,6 +40,18 @@ FEEDBACK = [
     {"manager_username": "employee2", "employee_username": "employee2", "strengths": "Self feedback, testing edge case.", "improvements": "None.", "sentiment": Sentiment.NEUTRAL, "acknowledged": False, "created_at": datetime.now() - timedelta(days=1), "tags": [], "comment": None, "anonymous": True, "visible_to_manager": True},
     # Manager to employee feedback (multiple tags, markdown comment)
     {"manager_username": "manager2", "employee_username": "employee1", "strengths": "*Markdown* **test**", "improvements": "- List\n- Of\n- Improvements", "sentiment": Sentiment.NEGATIVE, "acknowledged": False, "created_at": datetime.now() - timedelta(days=2), "tags": ["leadership", "communication", "technical"], "comment": "**Manager's markdown comment**", "anonymous": False, "visible_to_manager": False},
+]
+
+# Demo feedback requests
+FEEDBACK_REQUESTS = [
+    {"employee_username": "employee1", "manager_username": "manager1", "status": FeedbackRequestStatus.PENDING},
+    {"employee_username": "employee2", "manager_username": "manager2", "status": FeedbackRequestStatus.COMPLETED},
+]
+
+# Demo notifications
+NOTIFICATIONS = [
+    {"user_username": "employee1", "message": "Welcome to the system!", "link": "/dashboard"},
+    {"user_username": "manager1", "message": "You have a new feedback request.", "link": "/feedback-requests"},
 ]
 
 def seed():
@@ -97,6 +109,29 @@ def seed():
             db.add(db_feedback)
         db.commit()
         print(f"Inserted {len(FEEDBACK)} feedback entries with tags.")
+
+        # Insert feedback requests
+        for req in FEEDBACK_REQUESTS:
+            db_request = FeedbackRequest(
+                employee_id=user_objs[req["employee_username"]].id,
+                manager_id=user_objs[req["manager_username"]].id,
+                status=req["status"]
+            )
+            db.add(db_request)
+        db.commit()
+        print(f"Inserted {len(FEEDBACK_REQUESTS)} feedback requests.")
+
+        # Insert notifications
+        for notif in NOTIFICATIONS:
+            db_notification = Notification(
+                user_id=user_objs[notif["user_username"]].id,
+                message=notif["message"],
+                link=notif["link"]
+            )
+            db.add(db_notification)
+        db.commit()
+        print(f"Inserted {len(NOTIFICATIONS)} notifications.")
+
     finally:
         db.close()
     print("Seeding complete!")

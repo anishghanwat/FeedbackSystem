@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
-import { MessageSquare, CheckCircle, Clock, TrendingUp, Plus, Tag, Edit, Trash2 } from 'lucide-react';
+import { MessageSquare, CheckCircle, Clock, TrendingUp, Plus, Tag, Edit, Trash2, Download } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
 import ReactMarkdown from 'react-markdown';
 import { Link } from 'react-router-dom';
+import { jsPDF } from 'jspdf';
 
 function EmployeeDashboard() {
     const [feedback, setFeedback] = useState([]);
@@ -47,20 +48,7 @@ function EmployeeDashboard() {
     };
 
     const handleRequestFeedback = async () => {
-        setRequestLoading(true);
-        setRequestError('');
-        try {
-            await api.post('/feedback/feedback-requests/', {
-                manager_id: feedback.length > 0 ? feedback[0].manager.id : null
-            });
-            fetchRequests();
-            toast.success('Feedback request sent to your manager!');
-        } catch (error) {
-            setRequestError('Could not request feedback.');
-            toast.error('Could not request feedback.');
-        } finally {
-            setRequestLoading(false);
-        }
+        window.location.href = '/feedback-request/new';
     };
 
     const hasPendingRequest = requests.some(r => r.status === 'pending');
@@ -97,6 +85,11 @@ function EmployeeDashboard() {
         }
     };
 
+    const handleCancelEdit = () => {
+        setEditingCommentId(null);
+        setEditingCommentText('');
+    };
+
     const handleDeleteComment = async (feedbackId) => {
         if (window.confirm("Are you sure you want to delete this comment?")) {
             try {
@@ -108,6 +101,49 @@ function EmployeeDashboard() {
                 toast.error("Failed to delete comment.");
             }
         }
+    };
+
+    const downloadFeedbackAsPDF = (feedbackItem) => {
+        const doc = new jsPDF();
+
+        // Title
+        doc.setFontSize(20);
+        doc.text('Feedback Report', 20, 20);
+
+        // Employee info
+        doc.setFontSize(12);
+        doc.text(`Employee: ${feedbackItem.employee.name}`, 20, 40);
+        doc.text(`Manager: ${feedbackItem.manager ? feedbackItem.manager.name : 'Anonymous'}`, 20, 50);
+        doc.text(`Date: ${new Date(feedbackItem.created_at).toLocaleDateString()}`, 20, 60);
+        doc.text(`Sentiment: ${feedbackItem.sentiment}`, 20, 70);
+
+        // Strengths
+        doc.setFontSize(14);
+        doc.text('Strengths:', 20, 90);
+        doc.setFontSize(10);
+        const strengthsLines = doc.splitTextToSize(feedbackItem.strengths, 170);
+        doc.text(strengthsLines, 20, 100);
+
+        // Areas to improve
+        const strengthsHeight = strengthsLines.length * 5;
+        doc.setFontSize(14);
+        doc.text('Areas to Improve:', 20, 110 + strengthsHeight);
+        doc.setFontSize(10);
+        const improvementsLines = doc.splitTextToSize(feedbackItem.improvements, 170);
+        doc.text(improvementsLines, 20, 120 + strengthsHeight);
+
+        // Tags
+        if (feedbackItem.tags && feedbackItem.tags.length > 0) {
+            const improvementsHeight = improvementsLines.length * 5;
+            doc.setFontSize(14);
+            doc.text('Tags:', 20, 130 + strengthsHeight + improvementsHeight);
+            doc.setFontSize(10);
+            const tagsText = feedbackItem.tags.map(tag => tag.name).join(', ');
+            doc.text(tagsText, 20, 140 + strengthsHeight + improvementsHeight);
+        }
+
+        // Save the PDF
+        doc.save(`feedback-${feedbackItem.id}.pdf`);
     };
 
     const getSentimentColor = (sentiment) => {
@@ -142,14 +178,14 @@ function EmployeeDashboard() {
 
             {/* Feedback Request Section */}
             <div className="bg-white shadow rounded-lg p-4 flex items-center space-x-4 mb-2">
-                <button
-                    onClick={handleRequestFeedback}
+                <Link
+                    to="/feedback-request/new"
                     className="inline-flex items-center px-4 py-2 border border-primary-300 text-sm font-medium rounded-md text-primary-700 bg-primary-100 hover:bg-primary-200 disabled:opacity-50"
-                    disabled={hasPendingRequest || requestLoading}
+                    disabled={hasPendingRequest}
                 >
                     <Plus className="h-4 w-4 mr-2" />
-                    {requestLoading ? 'Requesting...' : 'Request Feedback'}
-                </button>
+                    Request Feedback
+                </Link>
                 <Link
                     to="/feedback/new"
                     className="inline-flex items-center px-4 py-2 border border-green-300 text-sm font-medium rounded-md text-green-700 bg-green-100 hover:bg-green-200 ml-2"
@@ -168,9 +204,6 @@ function EmployeeDashboard() {
                         <CheckCircle className="h-3 w-3 mr-1" />
                         Last request completed
                     </span>
-                )}
-                {requestError && (
-                    <span className="text-red-600 text-xs ml-2">{requestError}</span>
                 )}
             </div>
 

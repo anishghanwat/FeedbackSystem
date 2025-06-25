@@ -4,6 +4,7 @@ import api from '../api';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { Users, MessageSquare, TrendingUp, CheckCircle, Plus, Mail } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { jsPDF } from 'jspdf';
 
 function ManagerDashboard() {
     const [stats, setStats] = useState(null);
@@ -42,15 +43,12 @@ function ManagerDashboard() {
 
                 if (newUnseenRequests.length > 0) {
                     if (isInitialLoad) {
-                        // On initial load, show a single summary notification for all unseen requests
                         toast(`You have ${newUnseenRequests.length} new pending request(s).`, { icon: '🔔' });
                     } else {
-                        // For polling, show individual toasts
                         newUnseenRequests.forEach(req => {
                             toast.success(`${req.employee.name} requested feedback!`);
                         });
                     }
-                    // Mark all newly found requests as notified
                     newUnseenRequests.forEach(req => notifiedRequestIds.current.add(req.id));
                 }
             } catch (error) {
@@ -72,6 +70,46 @@ function ManagerDashboard() {
         navigate(`/feedback/new?employee=${employeeId}&request=${requestId}`);
     };
 
+    const handleDownloadPDF = async (employee) => {
+        try {
+            const response = await api.get(`/users/employee/${employee.id}/feedback`);
+            const feedbackList = response.data;
+
+            const doc = new jsPDF();
+            doc.setFontSize(18);
+            doc.text(`Feedback Summary for ${employee.name}`, 20, 20);
+
+            let y = 35;
+            feedbackList.forEach((fb, idx) => {
+                doc.setFontSize(12);
+                doc.text(`Feedback #${idx + 1}`, 20, y);
+                y += 7;
+                doc.text(`Date: ${new Date(fb.created_at).toLocaleDateString()}`, 20, y);
+                y += 7;
+                doc.text(`Sentiment: ${fb.sentiment}`, 20, y);
+                y += 7;
+                doc.text(`Strengths: ${fb.strengths}`, 20, y);
+                y += 7;
+                doc.text(`Improvements: ${fb.improvements}`, 20, y);
+                y += 7;
+                if (fb.tags && fb.tags.length > 0) {
+                    doc.text(`Tags: ${fb.tags.map(t => t.name).join(", ")}`, 20, y);
+                    y += 7;
+                }
+                if (fb.comment) {
+                    doc.text(`Comment: ${fb.comment}`, 20, y);
+                    y += 7;
+                }
+                y += 5;
+                if (y > 270) { doc.addPage(); y = 20; }
+            });
+
+            doc.save(`feedback-summary-${employee.name}.pdf`);
+        } catch (err) {
+            toast.error("Failed to generate PDF. Please try again.");
+        }
+    };
+
     const pendingRequests = requests.filter(r => r.status === 'pending');
 
     const chartData = stats ? [
@@ -90,15 +128,37 @@ function ManagerDashboard() {
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <h1 className="text-2xl font-bold text-gray-900">Manager Dashboard</h1>
-                <Link
-                    to="/feedback/new"
-                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700"
-                >
-                    <Plus className="h-4 w-4 mr-2" />
-                    New Feedback
-                </Link>
+            {/* Team Members - moved up for better layout */}
+            <div className="bg-white shadow rounded-lg">
+                <div className="px-6 py-4 border-b border-gray-200">
+                    <h3 className="text-lg font-medium text-gray-900">Team Members</h3>
+                </div>
+                <div className="divide-y divide-gray-200">
+                    {employees.map((employee) => (
+                        <div key={employee.id} className="px-6 py-4 flex items-center justify-between">
+                            <div>
+                                <h4 className="text-sm font-medium text-gray-900">{employee.name}</h4>
+                                <p className="text-sm text-gray-500">{employee.username}</p>
+                            </div>
+                            <div className="flex space-x-2">
+                                <Link
+                                    to={`/feedback/new?employee=${employee.id}`}
+                                    className="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-primary-700 bg-primary-100 hover:bg-primary-200"
+                                >
+                                    <Plus className="h-3 w-3 mr-1" />
+                                    Give Feedback
+                                </Link>
+                                <button
+                                    onClick={() => handleDownloadPDF(employee)}
+                                    className="inline-flex items-center px-3 py-1 border border-blue-300 text-sm font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200"
+                                    title="Download all feedback for this employee as PDF"
+                                >
+                                    Download PDF
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
             </div>
 
             {/* Pending Feedback Requests */}
@@ -244,30 +304,6 @@ function ManagerDashboard() {
                             <Bar dataKey="value" fill="#3B82F6" />
                         </BarChart>
                     </ResponsiveContainer>
-                </div>
-            </div>
-
-            {/* Team Members */}
-            <div className="bg-white shadow rounded-lg">
-                <div className="px-6 py-4 border-b border-gray-200">
-                    <h3 className="text-lg font-medium text-gray-900">Team Members</h3>
-                </div>
-                <div className="divide-y divide-gray-200">
-                    {employees.map((employee) => (
-                        <div key={employee.id} className="px-6 py-4 flex items-center justify-between">
-                            <div>
-                                <h4 className="text-sm font-medium text-gray-900">{employee.name}</h4>
-                                <p className="text-sm text-gray-500">{employee.username}</p>
-                            </div>
-                            <Link
-                                to={`/feedback/new?employee=${employee.id}`}
-                                className="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-primary-700 bg-primary-100 hover:bg-primary-200"
-                            >
-                                <Plus className="h-3 w-3 mr-1" />
-                                Give Feedback
-                            </Link>
-                        </div>
-                    ))}
                 </div>
             </div>
         </div>

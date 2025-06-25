@@ -51,4 +51,25 @@ def get_employees(
     """Get all employees (for managers and employees)"""
     # Allow both managers and employees
     employees = db.query(User).filter(User.role == UserRole.EMPLOYEE).all()
-    return employees 
+    return employees
+
+@router.get("/managers", response_model=List[schemas.User])
+def get_managers(
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(get_current_active_user)
+):
+    """Get all managers (for employees to request feedback)"""
+    # Allow both managers and employees to see managers
+    managers = db.query(User).filter(User.role == UserRole.MANAGER).all()
+    return managers
+
+@router.get("/employee/{employee_id}/feedback", response_model=List[schemas.Feedback])
+def get_all_feedback_for_employee(
+    employee_id: int,
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(get_current_active_user)
+):
+    if current_user.role != UserRole.MANAGER:
+        raise HTTPException(status_code=403, detail="Only managers can access this.")
+    feedback = services.get_employee_feedback(employee_id, db)
+    return feedback 

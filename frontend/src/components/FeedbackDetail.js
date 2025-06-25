@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import api from '../api';
 import { ArrowLeft, CheckCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import ReactMarkdown from 'react-markdown';
 
 function FeedbackDetail() {
     const [feedback, setFeedback] = useState(null);
@@ -92,6 +93,44 @@ function FeedbackDetail() {
                                     Acknowledged
                                 </span>
                             )}
+                        </div>
+                        {/* Tags */}
+                        {feedback.tags && feedback.tags.length > 0 && (
+                            <div className="flex items-center flex-wrap gap-2 mb-3">
+                                <span className="font-semibold text-sm text-gray-700">Tags:</span>
+                                {feedback.tags.map(tag => (
+                                    <span key={tag.id} className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                        {tag.name}
+                                    </span>
+                                ))}
+                            </div>
+                        )}
+                        {/* Strengths */}
+                        <div className="mb-3">
+                            <h5 className="text-sm font-medium text-gray-700 mb-1">Strengths</h5>
+                            <div className="bg-green-50 p-3 rounded-md">
+                                <ReactMarkdown>{feedback.strengths || 'None'}</ReactMarkdown>
+                            </div>
+                        </div>
+                        {/* Areas to Improve */}
+                        <div className="mb-3">
+                            <h5 className="text-sm font-medium text-gray-700 mb-1">Areas to Improve</h5>
+                            <div className="bg-yellow-50 p-3 rounded-md">
+                                <ReactMarkdown>{feedback.improvements || 'None'}</ReactMarkdown>
+                            </div>
+                        </div>
+                        {/* Comment */}
+                        {feedback.comment && (
+                            <div className="mb-3">
+                                <h5 className="text-sm font-medium text-gray-700 mb-1">Employee Comment</h5>
+                                <div className="bg-gray-50 p-3 rounded-md">
+                                    <ReactMarkdown>{feedback.comment}</ReactMarkdown>
+                                </div>
+                            </div>
+                        )}
+                        {/* Created At */}
+                        <div className="text-xs text-gray-500 mt-2">
+                            Created on {new Date(feedback.created_at).toLocaleString()}
                         </div>
                     </div>
                 </div>

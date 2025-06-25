@@ -15,18 +15,26 @@ from services import (
 )
 from .auth import get_current_active_user
 from models import Feedback, User
+from email_utils import send_email
 
 router = APIRouter(prefix="/feedback", tags=["feedback"])
 
 @router.post("/", response_model=schemas.Feedback)
-def create_new_feedback(
+async def create_new_feedback(
     feedback: schemas.FeedbackCreate,
     db: Session = Depends(get_db),
     current_user: schemas.User = Depends(get_current_active_user)
 ):
     # Allow managers to create feedback (anonymous or not)
     if current_user.role == "manager":
-        return create_feedback(feedback, current_user.id, db)
+        fb = create_feedback(feedback, current_user.id, db)
+        # Send email to employee
+        employee = db.query(User).filter(User.id == feedback.employee_id).first()
+        if employee and employee.email:
+            subject = "You have new feedback!"
+            body = f"<p>Hi {employee.name},</p><p>You have received new feedback from your manager.</p>"
+            await send_email(subject, [employee.email], body)
+        return fb
     # Allow employees to create peer-to-peer feedback (anonymous or not)
     elif current_user.role == "employee":
         # Only allow employee to employee feedback
@@ -199,7 +207,7 @@ def delete_feedback_endpoint(
     return {"message": "Feedback deleted successfully"}
 
 @router.post("/feedback-requests/", response_model=schemas.FeedbackRequest)
-def create_feedback_request_endpoint(
+async def create_feedback_request_endpoint(
     request: schemas.FeedbackRequestCreate,
     db: Session = Depends(get_db),
     current_user: schemas.User = Depends(get_current_active_user)
@@ -207,6 +215,12 @@ def create_feedback_request_endpoint(
     if current_user.role != "employee":
         raise HTTPException(status_code=403, detail="Only employees can request feedback")
     feedback_request = create_feedback_request(current_user.id, request.manager_id, db)
+    # Send email to manager
+    manager = db.query(User).filter(User.id == request.manager_id).first()
+    if manager and manager.email:
+        subject = "New Feedback Request"
+        body = f"<p>Hi {manager.name},</p><p>You have received a new feedback request from {current_user.name}.</p>"
+        await send_email(subject, [manager.email], body)
     return schemas.FeedbackRequest.model_validate(feedback_request)
 
 @router.get("/feedback-requests/", response_model=List[schemas.FeedbackRequest])

@@ -139,7 +139,14 @@ def create_feedback(feedback: FeedbackCreate, manager_id: int, db: Session) -> F
     return db_feedback
 
 def get_feedback_by_id(feedback_id: int, db: Session) -> Optional[Feedback]:
-    return db.query(Feedback).filter(Feedback.id == feedback_id).first()
+    return db.query(Feedback)\
+        .options(
+            joinedload(Feedback.manager),
+            joinedload(Feedback.employee),
+            joinedload(Feedback.tags)
+        )\
+        .filter(Feedback.id == feedback_id)\
+        .first()
 
 def update_feedback(feedback_id: int, feedback_update: FeedbackUpdate, db: Session) -> Optional[Feedback]:
     db_feedback = get_feedback_by_id(feedback_id, db)
@@ -263,10 +270,16 @@ def create_feedback_request(employee_id: int, manager_id: int, db: Session) -> F
     return request
 
 def get_feedback_requests_for_manager(manager_id: int, db: Session):
-    return db.query(FeedbackRequest).filter(FeedbackRequest.manager_id == manager_id).all()
+    return db.query(FeedbackRequest).options(
+        joinedload(FeedbackRequest.employee),
+        joinedload(FeedbackRequest.manager)
+    ).filter(FeedbackRequest.manager_id == manager_id).all()
 
 def get_feedback_requests_for_employee(employee_id: int, db: Session):
-    return db.query(FeedbackRequest).filter(FeedbackRequest.employee_id == employee_id).all()
+    return db.query(FeedbackRequest).options(
+        joinedload(FeedbackRequest.employee),
+        joinedload(FeedbackRequest.manager)
+    ).filter(FeedbackRequest.employee_id == employee_id).all()
 
 def complete_feedback_request(request_id: int, db: Session):
     request = db.query(FeedbackRequest).filter(FeedbackRequest.id == request_id).first()
