@@ -3,6 +3,7 @@ import api from '../api';
 import { MessageSquare, CheckCircle, Clock, TrendingUp, Plus, Tag, Edit, Trash2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
+import ReactMarkdown from 'react-markdown';
 
 function EmployeeDashboard() {
     const [feedback, setFeedback] = useState([]);
@@ -297,15 +298,29 @@ function EmployeeDashboard() {
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-4">
                                             <div>
                                                 <h5 className="text-sm font-medium text-gray-700 mb-2">Strengths</h5>
-                                                <p className="text-sm text-gray-600 bg-green-50 p-3 rounded-md">
-                                                    {item.strengths}
-                                                </p>
+                                                <div className="bg-green-50 p-3 rounded-md">
+                                                    {(() => {
+                                                        const val = item.strengths;
+                                                        if (typeof val !== 'string' && typeof val !== 'number') {
+                                                            console.warn('Unexpected type for strengths:', val);
+                                                            return null;
+                                                        }
+                                                        return <ReactMarkdown>{String(val)}</ReactMarkdown>;
+                                                    })()}
+                                                </div>
                                             </div>
                                             <div>
                                                 <h5 className="text-sm font-medium text-gray-700 mb-2">Areas to Improve</h5>
-                                                <p className="text-sm text-gray-600 bg-yellow-50 p-3 rounded-md">
-                                                    {item.improvements}
-                                                </p>
+                                                <div className="bg-yellow-50 p-3 rounded-md">
+                                                    {(() => {
+                                                        const val = item.improvements;
+                                                        if (typeof val !== 'string' && typeof val !== 'number') {
+                                                            console.warn('Unexpected type for improvements:', val);
+                                                            return null;
+                                                        }
+                                                        return <ReactMarkdown>{String(val)}</ReactMarkdown>;
+                                                    })()}
+                                                </div>
                                             </div>
                                         </div>
 
@@ -323,9 +338,16 @@ function EmployeeDashboard() {
                                                         </button>
                                                     </div>
                                                 </div>
-                                                <p className="text-sm text-gray-600 bg-blue-50 p-3 rounded-md">
-                                                    {item.comment}
-                                                </p>
+                                                <div className="bg-blue-50 p-3 rounded-md">
+                                                    {(() => {
+                                                        const val = item.comment;
+                                                        if (typeof val !== 'string' && typeof val !== 'number') {
+                                                            console.warn('Unexpected type for comment:', val);
+                                                            return null;
+                                                        }
+                                                        return <ReactMarkdown>{String(val)}</ReactMarkdown>;
+                                                    })()}
+                                                </div>
                                             </div>
                                         )}
 

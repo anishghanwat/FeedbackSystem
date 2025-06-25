@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import api from '../api';
 import { ArrowLeft, CheckCircle, Tag } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 
 function FeedbackDetail() {
     const [feedback, setFeedback] = useState(null);
@@ -98,24 +99,45 @@ function FeedbackDetail() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-4">
                             <div>
                                 <h5 className="text-sm font-medium text-gray-700 mb-2">Strengths</h5>
-                                <p className="text-sm text-gray-600 bg-green-50 p-3 rounded-md break-words">
-                                    {feedback.strengths}
-                                </p>
+                                <div className="bg-green-50 p-3 rounded-md break-words">
+                                    {(() => {
+                                        const val = feedback.strengths;
+                                        if (typeof val !== 'string' && typeof val !== 'number') {
+                                            console.warn('Unexpected type for strengths:', val);
+                                            return null;
+                                        }
+                                        return <ReactMarkdown>{String(val)}</ReactMarkdown>;
+                                    })()}
+                                </div>
                             </div>
                             <div>
                                 <h5 className="text-sm font-medium text-gray-700 mb-2">Areas to Improve</h5>
-                                <p className="text-sm text-gray-600 bg-yellow-50 p-3 rounded-md break-words">
-                                    {feedback.improvements}
-                                </p>
+                                <div className="bg-yellow-50 p-3 rounded-md break-words">
+                                    {(() => {
+                                        const val = feedback.improvements;
+                                        if (typeof val !== 'string' && typeof val !== 'number') {
+                                            console.warn('Unexpected type for improvements:', val);
+                                            return null;
+                                        }
+                                        return <ReactMarkdown>{String(val)}</ReactMarkdown>;
+                                    })()}
+                                </div>
                             </div>
                         </div>
 
                         {feedback.comment && (
                             <div className="mt-4">
                                 <h5 className="text-sm font-medium text-gray-700 mb-2">Employee's Comment</h5>
-                                <p className="text-sm text-gray-600 bg-blue-50 p-3 rounded-md break-words">
-                                    {feedback.comment}
-                                </p>
+                                <div className="bg-blue-50 p-3 rounded-md break-words">
+                                    {(() => {
+                                        const val = feedback.comment;
+                                        if (typeof val !== 'string' && typeof val !== 'number') {
+                                            console.warn('Unexpected type for comment:', val);
+                                            return null;
+                                        }
+                                        return <ReactMarkdown>{String(val)}</ReactMarkdown>;
+                                    })()}
+                                </div>
                             </div>
                         )}
 
