@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Bell, CheckCheck } from 'lucide-react';
 import api from '../api';
 import { useAuth } from '../contexts/AuthContext';
@@ -9,24 +9,24 @@ function NotificationBell() {
     const [notifications, setNotifications] = useState([]);
     const [isOpen, setIsOpen] = useState(false);
     const { user } = useAuth();
+    const [unreadCount, setUnreadCount] = useState(0);
 
-    const unreadCount = notifications.filter(n => !n.read).length;
-
-    const fetchNotifications = async () => {
+    const fetchNotifications = useCallback(async () => {
         if (!user) return;
         try {
-            const response = await api.get('/notifications/');
+            const response = await api.get('/notifications');
             setNotifications(response.data);
+            setUnreadCount(response.data.filter(n => !n.read).length);
         } catch (error) {
             console.error('Failed to fetch notifications:', error);
         }
-    };
+    }, [user]);
 
     useEffect(() => {
         fetchNotifications();
         const interval = setInterval(fetchNotifications, 30000); // Poll every 30 seconds
         return () => clearInterval(interval);
-    }, [user]);
+    }, [fetchNotifications]);
 
     const handleNotificationClick = async (notification) => {
         try {

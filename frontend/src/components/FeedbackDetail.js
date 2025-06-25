@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import api from '../api';
-import { ArrowLeft, CheckCircle, Tag } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
+import { ArrowLeft, CheckCircle } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 function FeedbackDetail() {
     const [feedback, setFeedback] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const { id } = useParams();
+    const { user } = useAuth();
+    const [showAuthor, setShowAuthor] = useState(false);
 
     useEffect(() => {
         const fetchFeedback = async () => {
@@ -24,17 +26,6 @@ function FeedbackDetail() {
         };
         fetchFeedback();
     }, [id]);
-
-    const formatDate = (dateString) => {
-        if (!dateString) return '';
-        return new Date(dateString).toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-    };
 
     const getSentimentColor = (sentiment) => {
         switch (sentiment) {
@@ -72,7 +63,25 @@ function FeedbackDetail() {
                     <div className="flex-1">
                         <div className="flex items-center space-x-3 mb-2">
                             <h4 className="font-medium text-gray-800">
-                                Feedback from {feedback.manager.name} for {feedback.employee.name}
+                                Feedback from {(() => {
+                                    if (user?.role === 'manager' && feedback.anonymous && feedback.visible_to_manager) {
+                                        if (showAuthor) {
+                                            return feedback.manager?.name || 'Unknown';
+                                        } else {
+                                            return (
+                                                <button
+                                                    className="text-blue-600 underline text-sm ml-1"
+                                                    onClick={() => setShowAuthor(true)}
+                                                >
+                                                    Show Author
+                                                </button>
+                                            );
+                                        }
+                                    }
+                                    if (feedback.manager && feedback.manager.name === 'Anonymous') return 'Anonymous';
+                                    if (!feedback.manager) return 'Anonymous';
+                                    return feedback.manager.name;
+                                })()} for {feedback.employee?.name}
                             </h4>
                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getSentimentColor(feedback.sentiment)}`}>
                                 {feedback.sentiment}
@@ -84,67 +93,6 @@ function FeedbackDetail() {
                                 </span>
                             )}
                         </div>
-
-                        {feedback.tags && feedback.tags.length > 0 && (
-                            <div className="flex items-center flex-wrap gap-2 mb-3">
-                                <Tag className="h-4 w-4 text-gray-400" />
-                                {feedback.tags.map(tag => (
-                                    <span key={tag.id} className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                        {tag.name}
-                                    </span>
-                                ))}
-                            </div>
-                        )}
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-4">
-                            <div>
-                                <h5 className="text-sm font-medium text-gray-700 mb-2">Strengths</h5>
-                                <div className="bg-green-50 p-3 rounded-md break-words">
-                                    {(() => {
-                                        const val = feedback.strengths;
-                                        if (typeof val !== 'string' && typeof val !== 'number') {
-                                            console.warn('Unexpected type for strengths:', val);
-                                            return null;
-                                        }
-                                        return <ReactMarkdown>{String(val)}</ReactMarkdown>;
-                                    })()}
-                                </div>
-                            </div>
-                            <div>
-                                <h5 className="text-sm font-medium text-gray-700 mb-2">Areas to Improve</h5>
-                                <div className="bg-yellow-50 p-3 rounded-md break-words">
-                                    {(() => {
-                                        const val = feedback.improvements;
-                                        if (typeof val !== 'string' && typeof val !== 'number') {
-                                            console.warn('Unexpected type for improvements:', val);
-                                            return null;
-                                        }
-                                        return <ReactMarkdown>{String(val)}</ReactMarkdown>;
-                                    })()}
-                                </div>
-                            </div>
-                        </div>
-
-                        {feedback.comment && (
-                            <div className="mt-4">
-                                <h5 className="text-sm font-medium text-gray-700 mb-2">Employee's Comment</h5>
-                                <div className="bg-blue-50 p-3 rounded-md break-words">
-                                    {(() => {
-                                        const val = feedback.comment;
-                                        if (typeof val !== 'string' && typeof val !== 'number') {
-                                            console.warn('Unexpected type for comment:', val);
-                                            return null;
-                                        }
-                                        return <ReactMarkdown>{String(val)}</ReactMarkdown>;
-                                    })()}
-                                </div>
-                            </div>
-                        )}
-
-                        <div className="text-xs text-gray-500 mt-3 pt-3 border-t">
-                            <p>Received on {formatDate(feedback.created_at)}</p>
-                            {feedback.updated_at && <p>Last updated on {formatDate(feedback.updated_at)}</p>}
-                        </div>
                     </div>
                 </div>
             </div>
@@ -152,4 +100,4 @@ function FeedbackDetail() {
     );
 }
 
-export default FeedbackDetail; 
+export default FeedbackDetail;

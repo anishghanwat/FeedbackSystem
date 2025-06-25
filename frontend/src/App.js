@@ -66,7 +66,7 @@ function AppRoutes() {
                     <Route
                         path="/feedback/new"
                         element={
-                            <PrivateRoute allowedRoles={['manager']}>
+                            <PrivateRoute allowedRoles={['manager', 'employee']}>
                                 <FeedbackForm />
                             </PrivateRoute>
                         }

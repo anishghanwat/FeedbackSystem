@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api';
-import { Clock, CheckCircle, User } from 'lucide-react';
+import { Clock, CheckCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 function FeedbackRequestList() {

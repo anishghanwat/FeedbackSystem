@@ -23,12 +23,23 @@ TAGS = ["communication", "teamwork", "technical", "leadership", "punctuality"]
 
 # Demo feedback
 FEEDBACK = [
-    # Feedback for employee1 from manager1
-    {"manager_username": "manager1", "employee_username": "employee1", "strengths": "Great teamwork and communication.", "improvements": "Could improve punctuality.", "sentiment": Sentiment.POSITIVE, "acknowledged": True, "created_at": datetime.now() - timedelta(days=5), "tags": ["teamwork", "communication"]},
-    {"manager_username": "manager1", "employee_username": "employee1", "strengths": "Very proactive in meetings.", "improvements": "Needs to document work more thoroughly.", "sentiment": Sentiment.NEUTRAL, "acknowledged": False, "created_at": datetime.now() - timedelta(days=2), "tags": ["communication"]},
-    # Feedback for employee2 from manager2
-    {"manager_username": "manager2", "employee_username": "employee2", "strengths": "Excellent technical skills.", "improvements": "Should participate more in team discussions.", "sentiment": Sentiment.POSITIVE, "acknowledged": True, "created_at": datetime.now() - timedelta(days=3), "tags": ["technical"]},
-    {"manager_username": "manager2", "employee_username": "employee2", "strengths": "Quick learner.", "improvements": "Needs to ask for help sooner when stuck.", "sentiment": Sentiment.NEGATIVE, "acknowledged": False, "created_at": datetime.now() - timedelta(days=1), "tags": ["technical", "teamwork"]},
+    # Manager to employee feedback (named, not anonymous)
+    {"manager_username": "manager1", "employee_username": "employee1", "strengths": "Great teamwork and communication.", "improvements": "Could improve punctuality.", "sentiment": Sentiment.POSITIVE, "acknowledged": True, "created_at": datetime.now() - timedelta(days=5), "tags": ["teamwork", "communication"], "comment": "Thanks for the feedback!", "anonymous": False, "visible_to_manager": False},
+    {"manager_username": "manager1", "employee_username": "employee1", "strengths": "Very proactive in meetings.", "improvements": "Needs to document work more thoroughly.", "sentiment": Sentiment.NEUTRAL, "acknowledged": False, "created_at": datetime.now() - timedelta(days=2), "tags": ["communication"], "comment": "# My Feedback\n- This is a *list item*\n- This is **bold**", "anonymous": False, "visible_to_manager": False},
+    # Manager to employee feedback (anonymous, visible to manager)
+    {"manager_username": "manager2", "employee_username": "employee2", "strengths": "**Excellent technical skills.**", "improvements": "Should participate more in team discussions.", "sentiment": Sentiment.POSITIVE, "acknowledged": True, "created_at": datetime.now() - timedelta(days=3), "tags": ["technical"], "comment": None, "anonymous": True, "visible_to_manager": True},
+    # Manager to employee feedback (anonymous, not visible to manager)
+    {"manager_username": "manager2", "employee_username": "employee1", "strengths": "Always willing to help.", "improvements": "Can improve documentation.", "sentiment": Sentiment.NEUTRAL, "acknowledged": False, "created_at": datetime.now() - timedelta(days=4), "tags": [], "comment": "Anonymous manager feedback.", "anonymous": True, "visible_to_manager": False},
+    # Peer to peer feedback (named, not anonymous)
+    {"manager_username": "employee1", "employee_username": "employee2", "strengths": "Great at sharing knowledge.", "improvements": "Could be more proactive.", "sentiment": Sentiment.POSITIVE, "acknowledged": True, "created_at": datetime.now() - timedelta(days=6), "tags": ["teamwork", "technical"], "comment": "Named peer feedback.", "anonymous": False, "visible_to_manager": False},
+    # Peer to peer feedback (anonymous, manager cannot see author)
+    {"manager_username": "employee1", "employee_username": "employee2", "strengths": "Very helpful teammate.", "improvements": "Could share knowledge more proactively.", "sentiment": Sentiment.NEUTRAL, "acknowledged": False, "created_at": datetime.now() - timedelta(days=1), "tags": ["teamwork"], "comment": "Peer feedback, submitted anonymously.", "anonymous": True, "visible_to_manager": False},
+    # Peer to peer feedback (anonymous, manager CAN see author)
+    {"manager_username": "employee2", "employee_username": "employee1", "strengths": "Always on time.", "improvements": "Should ask for help sooner.", "sentiment": Sentiment.NEUTRAL, "acknowledged": False, "created_at": datetime.now() - timedelta(days=1), "tags": ["punctuality"], "comment": "Peer feedback, anonymous to peer but visible to manager.", "anonymous": True, "visible_to_manager": True},
+    # Peer to peer feedback (anonymous, no tags, no comment)
+    {"manager_username": "employee2", "employee_username": "employee2", "strengths": "Self feedback, testing edge case.", "improvements": "None.", "sentiment": Sentiment.NEUTRAL, "acknowledged": False, "created_at": datetime.now() - timedelta(days=1), "tags": [], "comment": None, "anonymous": True, "visible_to_manager": True},
+    # Manager to employee feedback (multiple tags, markdown comment)
+    {"manager_username": "manager2", "employee_username": "employee1", "strengths": "*Markdown* **test**", "improvements": "- List\n- Of\n- Improvements", "sentiment": Sentiment.NEGATIVE, "acknowledged": False, "created_at": datetime.now() - timedelta(days=2), "tags": ["leadership", "communication", "technical"], "comment": "**Manager's markdown comment**", "anonymous": False, "visible_to_manager": False},
 ]
 
 def seed():
@@ -73,14 +84,16 @@ def seed():
                 improvements=fb["improvements"],
                 sentiment=fb["sentiment"],
                 acknowledged=fb["acknowledged"],
-                created_at=fb["created_at"]
+                created_at=fb["created_at"],
+                comment=fb.get("comment"),
+                anonymous=fb.get("anonymous", False),
+                visible_to_manager=fb.get("visible_to_manager", False)
             )
             # Add tags if they exist in the feedback entry
             if "tags" in fb:
                 for tag_name in fb["tags"]:
                     if tag_name in tag_objs:
                         db_feedback.tags.append(tag_objs[tag_name])
-            
             db.add(db_feedback)
         db.commit()
         print(f"Inserted {len(FEEDBACK)} feedback entries with tags.")

@@ -5,6 +5,7 @@ import services
 import schemas
 from database import get_db
 from routers.auth import get_current_active_user
+from models import User, UserRole
 
 router = APIRouter(
     prefix="/users",
@@ -47,9 +48,7 @@ def get_employees(
     db: Session = Depends(get_db),
     current_user: schemas.User = Depends(get_current_active_user)
 ):
-    """Get all employees (for managers)"""
-    if current_user.role != 'manager':
-        raise HTTPException(status_code=403, detail="Only managers can view employees")
-    
-    employees = services.get_employees_for_manager(current_user.id, db)
+    """Get all employees (for managers and employees)"""
+    # Allow both managers and employees
+    employees = db.query(User).filter(User.role == UserRole.EMPLOYEE).all()
     return employees 

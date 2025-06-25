@@ -80,12 +80,16 @@ class FeedbackBase(BaseModel):
 class FeedbackCreate(FeedbackBase):
     employee_id: int
     tags: Optional[List[str]] = []
+    anonymous: Optional[bool] = False
+    visible_to_manager: Optional[bool] = False
 
 class FeedbackUpdate(BaseModel):
     strengths: Optional[str] = None
     improvements: Optional[str] = None
     sentiment: Optional[Sentiment] = None
     tags: Optional[List[str]] = []
+    anonymous: Optional[bool] = None
+    visible_to_manager: Optional[bool] = None
 
 class Feedback(FeedbackBase):
     id: int
@@ -96,9 +100,11 @@ class Feedback(FeedbackBase):
     acknowledged: bool
     acknowledged_at: Optional[datetime] = None
     comment: Optional[str] = None
-    manager: "User"
+    manager: Optional["User"] = None
     employee: "User"
     tags: List["Tag"] = []
+    anonymous: bool
+    visible_to_manager: bool
 
     class Config:
         from_attributes = True

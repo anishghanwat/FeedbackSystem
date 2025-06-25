@@ -19,6 +19,7 @@ function FeedbackList() {
     const [deleteError, setDeleteError] = useState('');
     const [comment, setComment] = useState("");
     const [editingCommentId, setEditingCommentId] = useState(null);
+    const [showAuthorIds, setShowAuthorIds] = useState([]);
 
     useEffect(() => {
         fetchFeedback();
@@ -113,9 +114,19 @@ function FeedbackList() {
     };
 
     const filteredFeedback = feedback.filter(item => {
-        if (selectedTags.length === 0) return true;
-        const itemTags = Array.isArray(item.tags) ? item.tags.map(tag => tag.name) : [];
-        return selectedTags.every(selectedTag => itemTags.includes(selectedTag.value));
+        // Tag filtering
+        if (selectedTags.length > 0) {
+            const itemTags = Array.isArray(item.tags) ? item.tags.map(tag => tag.name) : [];
+            if (!selectedTags.every(selectedTag => itemTags.includes(selectedTag.value))) {
+                return false;
+            }
+        }
+        // Visibility filtering
+        if (user?.role === 'employee') {
+            return item.anonymous === true || item.employee?.id === user.id;
+        }
+        // Managers see all feedback returned by backend
+        return true;
     });
 
     const handleCommentSubmit = async (feedbackId) => {
@@ -222,10 +233,26 @@ function FeedbackList() {
                                 <div className="flex items-start justify-between">
                                     <div className="flex-1">
                                         <div className="flex items-center space-x-3 mb-2">
-                                            <h4 className="text-lg font-medium text-gray-900">
-                                                {user?.role === 'manager'
-                                                    ? `Feedback for ${item.employee.name}`
-                                                    : `Feedback from ${item.manager.name}`}
+                                            <h4 className="font-medium text-gray-800">
+                                                Feedback from {(() => {
+                                                    if (user?.role === 'manager' && item.anonymous && item.visible_to_manager) {
+                                                        if (showAuthorIds.includes(item.id)) {
+                                                            return item.manager?.name || 'Unknown';
+                                                        } else {
+                                                            return (
+                                                                <button
+                                                                    className="text-blue-600 underline text-sm ml-1"
+                                                                    onClick={() => setShowAuthorIds(prev => [...prev, item.id])}
+                                                                >
+                                                                    Show Author
+                                                                </button>
+                                                            );
+                                                        }
+                                                    }
+                                                    if (item.manager && item.manager.name === 'Anonymous') return 'Anonymous';
+                                                    if (!item.manager) return 'Anonymous';
+                                                    return item.manager.name;
+                                                })()} for {item.employee?.name}
                                             </h4>
                                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getSentimentColor(item.sentiment)}`}>
                                                 {item.sentiment}
@@ -372,7 +399,8 @@ function FeedbackList() {
                                                     </button>
                                                 )}
 
-                                                {user?.role === 'manager' && (
+                                                {/* Show edit/delete if current user is the author (manager or employee) */}
+                                                {(user && item.manager && user.id === item.manager.id) && (
                                                     <>
                                                         <button
                                                             onClick={() => handleEdit(item.id)}

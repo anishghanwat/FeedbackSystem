@@ -106,20 +106,28 @@ def get_employees_for_manager(manager_id: int, db: Session) -> List[User]:
     return db.query(User).filter(User.role == UserRole.EMPLOYEE).all()
 
 def create_feedback(feedback: FeedbackCreate, manager_id: int, db: Session) -> Feedback:
+    # Check if anonymous feedback is requested
+    if feedback.anonymous:
+        # Get manager and employee user objects
+        manager = db.query(User).filter(User.id == manager_id).first()
+        employee = db.query(User).filter(User.id == feedback.employee_id).first()
+        # Only allow anonymous feedback if both are employees (peer-to-peer)
+        if not (manager and employee and manager.role == UserRole.EMPLOYEE and employee.role == UserRole.EMPLOYEE):
+            raise HTTPException(status_code=400, detail="Anonymous feedback is only allowed for peer-to-peer (employee to employee) feedback.")
     db_feedback = Feedback(
         manager_id=manager_id,
         employee_id=feedback.employee_id,
         strengths=feedback.strengths,
         improvements=feedback.improvements,
-        sentiment=feedback.sentiment
+        sentiment=feedback.sentiment,
+        anonymous=feedback.anonymous or False,
+        visible_to_manager=feedback.visible_to_manager or False
     )
     if feedback.tags:
         db_feedback.tags = get_or_create_tags(db, feedback.tags)
-    
     db.add(db_feedback)
     db.commit()
     db.refresh(db_feedback)
-    
     # Notify employee
     manager = db.query(User).filter(User.id == manager_id).first()
     create_notification(
@@ -128,7 +136,6 @@ def create_feedback(feedback: FeedbackCreate, manager_id: int, db: Session) -> F
         message=f"You have new feedback from {manager.name}.",
         link=f"/feedback/{db_feedback.id}"
     )
-
     return db_feedback
 
 def get_feedback_by_id(feedback_id: int, db: Session) -> Optional[Feedback]:
@@ -173,15 +180,23 @@ def unacknowledge_feedback(feedback_id: int, db: Session) -> Optional[Feedback]:
 
 def get_manager_feedback(manager_id: int, db: Session) -> List[Feedback]:
     """
-    Get all feedback given by a specific manager, including tags.
+    Get all feedback given by a specific manager, including tags and related users.
     """
-    return db.query(Feedback).options(joinedload(Feedback.tags)).filter(Feedback.manager_id == manager_id).order_by(Feedback.created_at.desc()).all()
+    return db.query(Feedback)\
+        .options(joinedload(Feedback.manager), joinedload(Feedback.employee), joinedload(Feedback.tags))\
+        .filter(Feedback.manager_id == manager_id)\
+        .order_by(Feedback.created_at.desc())\
+        .all()
 
 def get_employee_feedback(employee_id: int, db: Session) -> List[Feedback]:
     """
-    Get all feedback for a specific employee, including their tags.
+    Get all feedback for a specific employee, including tags and related users.
     """
-    return db.query(Feedback).options(joinedload(Feedback.tags)).filter(Feedback.employee_id == employee_id).order_by(Feedback.created_at.desc()).all()
+    return db.query(Feedback)\
+        .options(joinedload(Feedback.manager), joinedload(Feedback.employee), joinedload(Feedback.tags))\
+        .filter(Feedback.employee_id == employee_id)\
+        .order_by(Feedback.created_at.desc())\
+        .all()
 
 def get_dashboard_stats(user_id: int, role: UserRole, db: Session) -> DashboardStats:
     if role == UserRole.MANAGER:

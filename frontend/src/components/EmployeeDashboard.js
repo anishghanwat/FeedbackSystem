@@ -4,6 +4,7 @@ import { MessageSquare, CheckCircle, Clock, TrendingUp, Plus, Tag, Edit, Trash2 
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
 import ReactMarkdown from 'react-markdown';
+import { Link } from 'react-router-dom';
 
 function EmployeeDashboard() {
     const [feedback, setFeedback] = useState([]);
@@ -149,6 +150,13 @@ function EmployeeDashboard() {
                     <Plus className="h-4 w-4 mr-2" />
                     {requestLoading ? 'Requesting...' : 'Request Feedback'}
                 </button>
+                <Link
+                    to="/feedback/new"
+                    className="inline-flex items-center px-4 py-2 border border-green-300 text-sm font-medium rounded-md text-green-700 bg-green-100 hover:bg-green-200 ml-2"
+                >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Send Peer Feedback
+                </Link>
                 {hasPendingRequest && (
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium text-yellow-800 bg-yellow-100">
                         <Clock className="h-3 w-3 mr-1" />
@@ -271,7 +279,7 @@ function EmployeeDashboard() {
                                     <div className="flex-1">
                                         <div className="flex items-center space-x-3 mb-2">
                                             <h4 className="font-medium text-gray-800">
-                                                Feedback from {item.manager.name}
+                                                Feedback from {item.manager ? item.manager.name : "Anonymous"}
                                             </h4>
                                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getSentimentColor(item.sentiment)}`}>
                                                 {item.sentiment}

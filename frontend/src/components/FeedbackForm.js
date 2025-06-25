@@ -3,14 +3,18 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import CreatableSelect from 'react-select/creatable';
 import { ArrowLeft, Save } from 'lucide-react';
 import api from '../api';
+import { useAuth } from '../contexts/AuthContext';
 
 function FeedbackForm() {
+    const { user } = useAuth();
     const [formData, setFormData] = useState({
         employee_id: '',
         strengths: '',
         improvements: '',
         sentiment: 'neutral',
-        tags: []
+        tags: [],
+        anonymous: false,
+        visible_to_manager: false
     });
     const [allTags, setAllTags] = useState([]);
     const [employees, setEmployees] = useState([]);
@@ -45,7 +49,9 @@ function FeedbackForm() {
                             strengths: feedbackToEdit.strengths,
                             improvements: feedbackToEdit.improvements,
                             sentiment: feedbackToEdit.sentiment,
-                            tags: feedbackToEdit.tags.map(tag => tag.name)
+                            tags: feedbackToEdit.tags.map(tag => tag.name),
+                            anonymous: feedbackToEdit.anonymous,
+                            visible_to_manager: feedbackToEdit.visible_to_manager
                         });
                         setIsEdit(true);
                     }
@@ -64,7 +70,9 @@ function FeedbackForm() {
             strengths: formData.strengths,
             improvements: formData.improvements,
             sentiment: formData.sentiment,
-            tags: formData.tags
+            tags: formData.tags,
+            anonymous: formData.anonymous,
+            visible_to_manager: formData.visible_to_manager
         };
 
         try {
@@ -149,13 +157,42 @@ function FeedbackForm() {
                             className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                         >
                             <option value="">Select an employee</option>
-                            {employees.map((employee) => (
-                                <option key={employee.value} value={employee.value}>
-                                    {employee.label}
-                                </option>
-                            ))}
+                            {employees
+                                .filter(emp => user?.role !== 'employee' || String(emp.value) !== String(user.id))
+                                .map((employee) => (
+                                    <option key={employee.value} value={employee.value}>
+                                        {employee.label}
+                                    </option>
+                                ))}
                         </select>
                     </div>
+
+                    {user?.role === 'employee' && formData.employee_id && String(formData.employee_id) !== String(user.id) && (
+                        <div className="mt-2">
+                            <label className="inline-flex items-center">
+                                <input
+                                    type="checkbox"
+                                    checked={formData.anonymous}
+                                    onChange={e => setFormData(prev => ({ ...prev, anonymous: e.target.checked, visible_to_manager: false }))}
+                                    className="form-checkbox h-4 w-4 text-primary-600"
+                                />
+                                <span className="ml-2 text-sm text-gray-700">Submit anonymously</span>
+                            </label>
+                            {formData.anonymous && (
+                                <div className="ml-6 mt-1">
+                                    <label className="inline-flex items-center">
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.visible_to_manager}
+                                            onChange={e => setFormData(prev => ({ ...prev, visible_to_manager: e.target.checked }))}
+                                            className="form-checkbox h-4 w-4 text-primary-600"
+                                        />
+                                        <span className="ml-2 text-sm text-gray-700">Allow manager to see my name</span>
+                                    </label>
+                                </div>
+                            )}
+                        </div>
+                    )}
 
                     <div>
                         <label htmlFor="strengths" className="block text-sm font-medium text-gray-700 mb-2">

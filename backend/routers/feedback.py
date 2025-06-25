@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from typing import List
+from copy import deepcopy
 
 import schemas
 from database import get_db
@@ -13,6 +14,7 @@ from services import (
     update_feedback_comment, delete_feedback_comment
 )
 from .auth import get_current_active_user
+from models import Feedback, User
 
 router = APIRouter(prefix="/feedback", tags=["feedback"])
 
@@ -22,9 +24,18 @@ def create_new_feedback(
     db: Session = Depends(get_db),
     current_user: schemas.User = Depends(get_current_active_user)
 ):
-    if current_user.role != "manager":
-        raise HTTPException(status_code=403, detail="Only managers can create feedback")
-    return create_feedback(feedback, current_user.id, db)
+    # Allow managers to create feedback (anonymous or not)
+    if current_user.role == "manager":
+        return create_feedback(feedback, current_user.id, db)
+    # Allow employees to create peer-to-peer feedback (anonymous or not)
+    elif current_user.role == "employee":
+        # Only allow employee to employee feedback
+        employee = db.query(User).filter(User.id == feedback.employee_id).first()
+        if not employee or employee.role != "employee":
+            raise HTTPException(status_code=400, detail="Peer feedback can only be sent to other employees.")
+        return create_feedback(feedback, current_user.id, db)
+    else:
+        raise HTTPException(status_code=403, detail="Only managers and employees can create feedback.")
 
 @router.get("/", response_model=List[schemas.Feedback])
 def get_feedback(
@@ -32,9 +43,39 @@ def get_feedback(
     current_user: schemas.User = Depends(get_current_active_user)
 ):
     if current_user.role == "manager":
-        return get_manager_feedback(current_user.id, db)
+        feedback_list = db.query(Feedback).options(
+            joinedload(Feedback.manager),
+            joinedload(Feedback.employee),
+            joinedload(Feedback.tags)
+        ).filter(
+            (Feedback.anonymous == True) |
+            (Feedback.manager_id == current_user.id)
+        ).order_by(Feedback.created_at.desc()).all()
     else:
-        return get_employee_feedback(current_user.id, db)
+        feedback_list = db.query(Feedback).options(
+            joinedload(Feedback.manager),
+            joinedload(Feedback.employee),
+            joinedload(Feedback.tags)
+        ).filter(
+            (Feedback.anonymous == True) |
+            ((Feedback.employee_id == current_user.id) & (Feedback.anonymous == False))
+        ).order_by(Feedback.created_at.desc()).all()
+    # Mask author for anonymous feedback
+    masked_feedback = []
+    for fb in feedback_list:
+        fb_copy = deepcopy(fb)
+        if fb_copy.anonymous:
+            # If manager and visible_to_manager is True, show author
+            if current_user.role == "manager" and fb_copy.visible_to_manager:
+                pass
+            # If current user is the author, show author
+            elif fb_copy.manager_id == current_user.id:
+                pass
+            else:
+                # Mask manager (author) info
+                fb_copy.manager = None
+        masked_feedback.append(fb_copy)
+    return masked_feedback
 
 @router.get("/{feedback_id}", response_model=schemas.Feedback)
 def get_feedback_by_id_endpoint(
@@ -49,7 +90,14 @@ def get_feedback_by_id_endpoint(
         raise HTTPException(status_code=403, detail="Access denied")
     elif current_user.role == "manager" and feedback.manager_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
-    return feedback
+    # Mask author for anonymous feedback
+    fb_copy = deepcopy(feedback)
+    if fb_copy.anonymous:
+        if (current_user.role == "manager" and fb_copy.visible_to_manager) or (fb_copy.manager_id == current_user.id):
+            pass
+        else:
+            fb_copy.manager = None
+    return fb_copy
 
 @router.put("/{feedback_id}", response_model=schemas.Feedback)
 def update_feedback_endpoint(
@@ -58,13 +106,18 @@ def update_feedback_endpoint(
     db: Session = Depends(get_db),
     current_user: schemas.User = Depends(get_current_active_user)
 ):
-    if current_user.role != "manager":
-        raise HTTPException(status_code=403, detail="Only managers can update feedback")
-    feedback = update_feedback(feedback_id, feedback_update, db)
+    feedback = get_feedback_by_id(feedback_id, db)
     if not feedback:
         raise HTTPException(status_code=404, detail="Feedback not found")
-    if feedback.manager_id != current_user.id:
+    # Allow managers to edit their own feedback
+    if current_user.role == "manager" and feedback.manager_id == current_user.id:
+        pass
+    # Allow employees to edit their own peer-to-peer feedback
+    elif current_user.role == "employee" and feedback.manager_id == current_user.id and feedback.employee_id != current_user.id:
+        pass
+    else:
         raise HTTPException(status_code=403, detail="Access denied")
+    feedback = update_feedback(feedback_id, feedback_update, db)
     return feedback
 
 @router.post("/{feedback_id}/acknowledge", response_model=schemas.Feedback)
@@ -133,9 +186,13 @@ def delete_feedback_endpoint(
     feedback = get_feedback_by_id(feedback_id, db)
     if not feedback:
         raise HTTPException(status_code=404, detail="Feedback not found")
-    if current_user.role != "manager":
-        raise HTTPException(status_code=403, detail="Only managers can delete feedback")
-    if feedback.manager_id != current_user.id:
+    # Allow managers to delete their own feedback
+    if current_user.role == "manager" and feedback.manager_id == current_user.id:
+        pass
+    # Allow employees to delete their own peer-to-peer feedback
+    elif current_user.role == "employee" and feedback.manager_id == current_user.id and feedback.employee_id != current_user.id:
+        pass
+    else:
         raise HTTPException(status_code=403, detail="Access denied")
     db.delete(feedback)
     db.commit()

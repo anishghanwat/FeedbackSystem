@@ -63,6 +63,8 @@ class Feedback(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     comment = Column(String, nullable=True)
+    anonymous = Column(Boolean, default=False)
+    visible_to_manager = Column(Boolean, default=False)
     
     # Relationships
     manager = relationship("User", foreign_keys=[manager_id], back_populates="feedback_given")
