@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import axios from 'axios';
-import { MessageSquare, CheckCircle, Clock, Edit, Trash2, XCircle } from 'lucide-react';
+import Select from 'react-select';
+import { MessageSquare, CheckCircle, Clock, Edit, Trash2, XCircle, Tag } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 function FeedbackList() {
     const [feedback, setFeedback] = useState([]);
+    const [allTags, setAllTags] = useState([]);
+    const [selectedTags, setSelectedTags] = useState([]);
     const [loading, setLoading] = useState(true);
     const { user } = useAuth();
     const navigate = useNavigate();
@@ -16,6 +19,7 @@ function FeedbackList() {
 
     useEffect(() => {
         fetchFeedback();
+        fetchTags();
     }, []);
 
     const fetchFeedback = async () => {
@@ -26,6 +30,15 @@ function FeedbackList() {
             console.error('Error fetching feedback:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchTags = async () => {
+        try {
+            const response = await axios.get('http://localhost:8000/feedback/tags/');
+            setAllTags(response.data.map(tag => ({ value: tag.name, label: tag.name })));
+        } catch (error) {
+            console.error('Failed to fetch tags:', error);
         }
     };
 
@@ -96,6 +109,12 @@ function FeedbackList() {
         });
     };
 
+    const filteredFeedback = feedback.filter(item => {
+        if (selectedTags.length === 0) return true;
+        const itemTags = Array.isArray(item.tags) ? item.tags.map(tag => tag.name) : [];
+        return selectedTags.every(selectedTag => itemTags.includes(selectedTag.value));
+    });
+
     if (loading) {
         return (
             <div className="flex items-center justify-center h-64">
@@ -110,6 +129,19 @@ function FeedbackList() {
                 <h1 className="text-2xl font-bold text-gray-900">
                     {user?.role === 'manager' ? 'Feedback Given' : 'My Feedback'}
                 </h1>
+            </div>
+
+            <div className="bg-white p-4 shadow rounded-lg">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Filter by Tags:</label>
+                <Select
+                    isMulti
+                    options={allTags}
+                    value={selectedTags}
+                    onChange={setSelectedTags}
+                    placeholder="Select tags to filter..."
+                    className="react-select-container"
+                    classNamePrefix="react-select"
+                />
             </div>
 
             {/* Delete Confirmation Modal */}
@@ -153,7 +185,7 @@ function FeedbackList() {
                 </div>
             )}
 
-            {feedback.length === 0 ? (
+            {filteredFeedback.length === 0 ? (
                 <div className="bg-white shadow rounded-lg">
                     <div className="px-6 py-12 text-center">
                         <MessageSquare className="mx-auto h-12 w-12 text-gray-400" />
@@ -168,28 +200,27 @@ function FeedbackList() {
                 </div>
             ) : (
                 <div className="space-y-4">
-                    {feedback.map((item) => (
+                    {filteredFeedback.map((item) => (
                         <div key={item.id} className="bg-white shadow rounded-lg">
                             <div className="px-6 py-4">
                                 <div className="flex items-start justify-between">
                                     <div className="flex-1">
-                                        <div className="flex items-center space-x-3 mb-3">
+                                        <div className="flex items-center space-x-3 mb-2">
                                             <h4 className="text-lg font-medium text-gray-900">
                                                 {user?.role === 'manager'
                                                     ? `Feedback for ${item.employee.name}`
-                                                    : `Feedback from ${item.manager.name}`
-                                                }
+                                                    : `Feedback from ${item.manager.name}`}
                                             </h4>
                                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getSentimentColor(item.sentiment)}`}>
                                                 {item.sentiment}
                                             </span>
                                             {item.acknowledged && (
-                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium text-green-800 bg-green-100">
+                                                <span
+                                                    className="relative inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium text-green-800 bg-green-100 group"
+                                                    title={item.acknowledged_at ? `Acknowledged on ${formatDate(item.acknowledged_at)}` : 'Acknowledged'}
+                                                >
                                                     <CheckCircle className="h-3 w-3 mr-1" />
                                                     Acknowledged
-                                                    {item.acknowledged_at && (
-                                                        <span className="ml-2 text-gray-500">({formatDate(item.acknowledged_at)})</span>
-                                                    )}
                                                 </span>
                                             )}
                                             {!item.acknowledged && user?.role === 'employee' && (
@@ -200,6 +231,17 @@ function FeedbackList() {
                                             )}
                                         </div>
 
+                                        {item.tags && item.tags.length > 0 && (
+                                            <div className="flex items-center flex-wrap gap-2 mb-3">
+                                                <Tag className="h-4 w-4 text-gray-400" />
+                                                {item.tags.map(tag => (
+                                                    <span key={tag.id} className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                                        {tag.name}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        )}
+
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                                             <div>
                                                 <h5 className="text-sm font-medium text-gray-700 mb-2">Strengths</h5>
@@ -207,7 +249,6 @@ function FeedbackList() {
                                                     {item.strengths}
                                                 </p>
                                             </div>
-
                                             <div>
                                                 <h5 className="text-sm font-medium text-gray-700 mb-2">Areas to Improve</h5>
                                                 <p className="text-sm text-gray-600 bg-yellow-50 p-3 rounded-md">
@@ -216,53 +257,66 @@ function FeedbackList() {
                                             </div>
                                         </div>
 
-                                        <div className="flex items-center justify-between text-xs text-gray-500">
-                                            <span>Created on {formatDate(item.created_at)}</span>
-                                            {item.updated_at && item.updated_at !== item.created_at && (
-                                                <span>Updated on {formatDate(item.updated_at)}</span>
-                                            )}
+                                        {/* Display comment if it exists */}
+                                        {item.comment && (
+                                            <div className="mt-4">
+                                                <h5 className="text-sm font-medium text-gray-700 mb-2">
+                                                    {user?.role === 'manager' ? `${item.employee.name}'s Comment` : 'Your Comment'}
+                                                </h5>
+                                                <p className="text-sm text-gray-600 bg-blue-50 p-3 rounded-md">
+                                                    {item.comment}
+                                                </p>
+                                            </div>
+                                        )}
+
+                                        <div className="border-t border-gray-200 mt-4 pt-3 flex items-center justify-between">
+                                            <div className="flex items-center space-x-3">
+                                                <span>Created on {formatDate(item.created_at)}</span>
+                                                {item.updated_at && item.updated_at !== item.created_at && (
+                                                    <span>Updated on {formatDate(item.updated_at)}</span>
+                                                )}
+                                            </div>
+                                            <div className="flex items-center space-x-3">
+                                                {!item.acknowledged && user?.role === 'employee' && (
+                                                    <button
+                                                        onClick={() => handleAcknowledge(item.id)}
+                                                        className="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700"
+                                                    >
+                                                        <CheckCircle className="h-3 w-3 mr-1" />
+                                                        Acknowledge
+                                                    </button>
+                                                )}
+
+                                                {item.acknowledged && user?.role === 'employee' && (
+                                                    <button
+                                                        onClick={() => handleUnacknowledge(item.id)}
+                                                        className="inline-flex items-center px-3 py-1 border border-yellow-300 text-sm font-medium rounded-md text-yellow-700 bg-white hover:bg-yellow-50"
+                                                    >
+                                                        <Clock className="h-3 w-3 mr-1" />
+                                                        Unacknowledge
+                                                    </button>
+                                                )}
+
+                                                {user?.role === 'manager' && (
+                                                    <>
+                                                        <button
+                                                            onClick={() => handleEdit(item.id)}
+                                                            className="inline-flex items-center px-3 py-1 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                                                        >
+                                                            <Edit className="h-3 w-3 mr-1" />
+                                                            Edit
+                                                        </button>
+                                                        <button
+                                                            onClick={() => openDeleteModal(item.id)}
+                                                            className="inline-flex items-center px-3 py-1 border border-red-300 text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50"
+                                                        >
+                                                            <Trash2 className="h-3 w-3 mr-1" />
+                                                            Delete
+                                                        </button>
+                                                    </>
+                                                )}
+                                            </div>
                                         </div>
-                                    </div>
-
-                                    <div className="ml-4 flex flex-col space-y-2">
-                                        {!item.acknowledged && user?.role === 'employee' && (
-                                            <button
-                                                onClick={() => handleAcknowledge(item.id)}
-                                                className="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700"
-                                            >
-                                                <CheckCircle className="h-3 w-3 mr-1" />
-                                                Acknowledge
-                                            </button>
-                                        )}
-
-                                        {item.acknowledged && user?.role === 'employee' && (
-                                            <button
-                                                onClick={() => handleUnacknowledge(item.id)}
-                                                className="inline-flex items-center px-3 py-1 border border-yellow-300 text-sm font-medium rounded-md text-yellow-700 bg-white hover:bg-yellow-50"
-                                            >
-                                                <Clock className="h-3 w-3 mr-1" />
-                                                Unacknowledge
-                                            </button>
-                                        )}
-
-                                        {user?.role === 'manager' && (
-                                            <>
-                                                <button
-                                                    onClick={() => handleEdit(item.id)}
-                                                    className="inline-flex items-center px-3 py-1 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-                                                >
-                                                    <Edit className="h-3 w-3 mr-1" />
-                                                    Edit
-                                                </button>
-                                                <button
-                                                    onClick={() => openDeleteModal(item.id)}
-                                                    className="inline-flex items-center px-3 py-1 border border-red-300 text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50"
-                                                >
-                                                    <Trash2 className="h-3 w-3 mr-1" />
-                                                    Delete
-                                                </button>
-                                            </>
-                                        )}
                                     </div>
                                 </div>
                             </div>

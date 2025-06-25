@@ -1,33 +1,76 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { Users, MessageSquare, TrendingUp, CheckCircle, Plus } from 'lucide-react';
+import { Users, MessageSquare, TrendingUp, CheckCircle, Plus, Mail } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 function ManagerDashboard() {
     const [stats, setStats] = useState(null);
     const [employees, setEmployees] = useState([]);
+    const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(true);
+    const navigate = useNavigate();
+    const notifiedRequestIds = useRef(new Set());
 
     useEffect(() => {
+        const fetchDashboardData = async () => {
+            try {
+                const [statsResponse, employeesResponse] = await Promise.all([
+                    axios.get('http://localhost:8000/feedback/dashboard/stats'),
+                    axios.get('http://localhost:8000/users/employees')
+                ]);
+                setStats(statsResponse.data);
+                setEmployees(employeesResponse.data);
+            } catch (error) {
+                console.error('Error fetching dashboard data:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        const fetchRequests = async (isInitialLoad = false) => {
+            try {
+                const response = await axios.get('http://localhost:8000/feedback/feedback-requests/');
+                const newRequests = response.data;
+                setRequests(newRequests);
+
+                const pendingRequests = newRequests.filter(r => r.status === 'pending');
+                const newUnseenRequests = pendingRequests.filter(req => !notifiedRequestIds.current.has(req.id));
+
+                if (newUnseenRequests.length > 0) {
+                    if (isInitialLoad) {
+                        // On initial load, show a single summary notification for all unseen requests
+                        toast(`You have ${newUnseenRequests.length} new pending request(s).`, { icon: '🔔' });
+                    } else {
+                        // For polling, show individual toasts
+                        newUnseenRequests.forEach(req => {
+                            toast.success(`${req.employee.name} requested feedback!`);
+                        });
+                    }
+                    // Mark all newly found requests as notified
+                    newUnseenRequests.forEach(req => notifiedRequestIds.current.add(req.id));
+                }
+            } catch (error) {
+                console.error('Failed to fetch requests:', error);
+            }
+        };
+
         fetchDashboardData();
+        fetchRequests(true);
+
+        const interval = setInterval(() => {
+            fetchRequests(false);
+        }, 15000);
+
+        return () => clearInterval(interval);
     }, []);
 
-    const fetchDashboardData = async () => {
-        try {
-            const [statsResponse, employeesResponse] = await Promise.all([
-                axios.get('http://localhost:8000/feedback/dashboard/stats'),
-                axios.get('http://localhost:8000/users/employees')
-            ]);
-
-            setStats(statsResponse.data);
-            setEmployees(employeesResponse.data);
-        } catch (error) {
-            console.error('Error fetching dashboard data:', error);
-        } finally {
-            setLoading(false);
-        }
+    const handleGiveFeedback = (employeeId, requestId) => {
+        navigate(`/feedback/new?employee=${employeeId}&request=${requestId}`);
     };
+
+    const pendingRequests = requests.filter(r => r.status === 'pending');
 
     const chartData = stats ? [
         { name: 'Positive', value: stats.positive_feedback, color: '#10B981' },
@@ -55,6 +98,30 @@ function ManagerDashboard() {
                     New Feedback
                 </Link>
             </div>
+
+            {/* Pending Feedback Requests */}
+            {pendingRequests.length > 0 && (
+                <div className="bg-white shadow rounded-lg p-4 mb-2">
+                    <h3 className="text-lg font-medium text-gray-900 mb-2 flex items-center">
+                        <Mail className="h-5 w-5 mr-2 text-primary-600" />
+                        Pending Feedback Requests
+                    </h3>
+                    <ul className="divide-y divide-gray-200">
+                        {pendingRequests.map((req) => (
+                            <li key={req.id} className="py-2 flex items-center justify-between">
+                                <span className="text-gray-800 font-medium">{req.employee.name}</span>
+                                <button
+                                    onClick={() => handleGiveFeedback(req.employee.id, req.id)}
+                                    className="inline-flex items-center px-3 py-1 border border-primary-300 text-sm font-medium rounded-md text-primary-700 bg-primary-100 hover:bg-primary-200"
+                                >
+                                    <Plus className="h-4 w-4 mr-1" />
+                                    Give Feedback
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            )}
 
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

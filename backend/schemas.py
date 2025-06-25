@@ -1,13 +1,28 @@
 from pydantic import BaseModel, EmailStr, validator
 from typing import Optional, List
 from datetime import datetime
-from models import UserRole, Sentiment
+from models import UserRole, Sentiment, FeedbackRequestStatus, Tag
+
+# Tag Schemas
+class TagBase(BaseModel):
+    name: str
+
+class TagCreate(TagBase):
+    pass
+
+class Tag(TagBase):
+    id: int
+
+    class Config:
+        from_attributes = True
 
 # User schemas
 class UserBase(BaseModel):
     name: str
     username: str
     role: UserRole
+    email: EmailStr
+    full_name: Optional[str] = None
 
     @validator('username')
     def validate_username(cls, v):
@@ -21,7 +36,6 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str
-    email: EmailStr
 
 class UserUpdate(BaseModel):
     name: Optional[str] = None
@@ -30,7 +44,7 @@ class UserUpdate(BaseModel):
 
 class User(UserBase):
     id: int
-    email: str
+    disabled: Optional[bool] = None
     
     class Config:
         from_attributes = True
@@ -65,25 +79,32 @@ class FeedbackBase(BaseModel):
 
 class FeedbackCreate(FeedbackBase):
     employee_id: int
+    tags: Optional[List[str]] = []
 
 class FeedbackUpdate(BaseModel):
     strengths: Optional[str] = None
     improvements: Optional[str] = None
     sentiment: Optional[Sentiment] = None
+    tags: Optional[List[str]] = []
 
 class Feedback(FeedbackBase):
     id: int
     manager_id: int
     employee_id: int
-    acknowledged: bool
-    acknowledged_at: Optional[datetime] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
-    manager: User
-    employee: User
-    
+    acknowledged: bool
+    acknowledged_at: Optional[datetime] = None
+    comment: Optional[str] = None
+    manager: "User"
+    employee: "User"
+    tags: List["Tag"] = []
+
     class Config:
         from_attributes = True
+
+class FeedbackComment(BaseModel):
+    comment: str
 
 # Auth schemas
 class LoginRequest(BaseModel):
@@ -106,4 +127,30 @@ class DashboardStats(BaseModel):
 class EmployeeFeedbackSummary(BaseModel):
     employee: User
     feedback_count: int
-    last_feedback_date: Optional[datetime] = None 
+    last_feedback_date: Optional[datetime] = None
+
+# FeedbackRequest schemas
+class FeedbackRequestBase(BaseModel):
+    employee_id: int
+    manager_id: int
+
+class FeedbackRequestCreate(BaseModel):
+    manager_id: int
+
+class FeedbackRequestUpdate(BaseModel):
+    status: FeedbackRequestStatus
+    completed_at: Optional[datetime] = None
+
+class FeedbackRequest(FeedbackRequestBase):
+    id: int
+    status: FeedbackRequestStatus
+    created_at: datetime
+    completed_at: Optional[datetime] = None
+    employee: User
+    manager: User
+
+    class Config:
+        from_attributes = True
+
+class Token(BaseModel):
+    access_token: str 

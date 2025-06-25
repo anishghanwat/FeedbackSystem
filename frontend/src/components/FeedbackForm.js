@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
+import CreatableSelect from 'react-select/creatable';
 import { ArrowLeft, Save } from 'lucide-react';
 
 function FeedbackForm() {
@@ -8,8 +9,10 @@ function FeedbackForm() {
         employee_id: '',
         strengths: '',
         improvements: '',
-        sentiment: 'neutral'
+        sentiment: 'neutral',
+        tags: []
     });
+    const [allTags, setAllTags] = useState([]);
     const [employees, setEmployees] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -17,9 +20,11 @@ function FeedbackForm() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const editId = searchParams.get('edit');
+    const requestId = searchParams.get('request');
 
     useEffect(() => {
         fetchEmployees();
+        fetchTags();
         const employeeId = searchParams.get('employee');
         if (employeeId) {
             setFormData(prev => ({ ...prev, employee_id: employeeId }));
@@ -29,6 +34,15 @@ function FeedbackForm() {
             fetchFeedbackToEdit(editId);
         }
     }, [searchParams, editId]);
+
+    const fetchTags = async () => {
+        try {
+            const response = await axios.get('http://localhost:8000/feedback/tags/');
+            setAllTags(response.data.map(tag => ({ value: tag.name, label: tag.name })));
+        } catch (error) {
+            console.error("Failed to fetch tags:", error);
+        }
+    };
 
     const fetchEmployees = async () => {
         try {
@@ -42,11 +56,13 @@ function FeedbackForm() {
     const fetchFeedbackToEdit = async (id) => {
         try {
             const response = await axios.get(`http://localhost:8000/feedback/${id}`);
+            const feedbackData = response.data;
             setFormData({
-                employee_id: response.data.employee_id,
-                strengths: response.data.strengths,
-                improvements: response.data.improvements,
-                sentiment: response.data.sentiment
+                employee_id: feedbackData.employee_id,
+                strengths: feedbackData.strengths,
+                improvements: feedbackData.improvements,
+                sentiment: feedbackData.sentiment,
+                tags: feedbackData.tags.map(tag => tag.name)
             });
         } catch (error) {
             setError('Failed to load feedback for editing');
@@ -63,6 +79,13 @@ function FeedbackForm() {
                 await axios.put(`http://localhost:8000/feedback/${editId}`, formData);
             } else {
                 await axios.post('http://localhost:8000/feedback/', formData);
+                if (requestId) {
+                    try {
+                        await axios.patch(`http://localhost:8000/feedback/feedback-requests/${requestId}/complete`);
+                    } catch (err) {
+                        setError('Feedback saved, but failed to mark request as completed.');
+                    }
+                }
             }
             navigate('/feedback');
         } catch (error) {
@@ -77,6 +100,13 @@ function FeedbackForm() {
         setFormData(prev => ({
             ...prev,
             [name]: value
+        }));
+    };
+
+    const handleTagChange = (selectedOptions) => {
+        setFormData(prev => ({
+            ...prev,
+            tags: selectedOptions ? selectedOptions.map(option => option.value) : []
         }));
     };
 
@@ -174,6 +204,21 @@ function FeedbackForm() {
                             <option value="neutral">Neutral</option>
                             <option value="negative">Negative</option>
                         </select>
+                    </div>
+
+                    <div>
+                        <label htmlFor="tags" className="block text-sm font-medium text-gray-700 mb-2">
+                            Tags
+                        </label>
+                        <CreatableSelect
+                            isMulti
+                            options={allTags}
+                            value={formData.tags.map(tag => ({ value: tag, label: tag }))}
+                            onChange={handleTagChange}
+                            placeholder="Select or create tags..."
+                            className="react-select-container"
+                            classNamePrefix="react-select"
+                        />
                     </div>
 
                     <div className="flex justify-end space-x-3">

@@ -1,8 +1,14 @@
-from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey, Enum
+from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey, Enum, Table
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import enum
 from database import Base
+
+# Association Table for Feedback <-> Tag
+feedback_tags = Table('feedback_tags', Base.metadata,
+    Column('feedback_id', Integer, ForeignKey('feedback.id'), primary_key=True),
+    Column('tag_id', Integer, ForeignKey('tags.id'), primary_key=True)
+)
 
 class UserRole(str, enum.Enum):
     MANAGER = "manager"
@@ -12,6 +18,20 @@ class Sentiment(str, enum.Enum):
     POSITIVE = "positive"
     NEUTRAL = "neutral"
     NEGATIVE = "negative"
+
+class FeedbackRequestStatus(str, enum.Enum):
+    PENDING = "pending"
+    COMPLETED = "completed"
+
+class Tag(Base):
+    __tablename__ = "tags"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, index=True)
+    feedback = relationship(
+        "Feedback",
+        secondary=feedback_tags,
+        back_populates="tags"
+    )
 
 class User(Base):
     __tablename__ = "users"
@@ -40,7 +60,26 @@ class Feedback(Base):
     acknowledged_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    comment = Column(String, nullable=True)
     
     # Relationships
     manager = relationship("User", foreign_keys=[manager_id], back_populates="feedback_given")
-    employee = relationship("User", foreign_keys=[employee_id], back_populates="feedback_received") 
+    employee = relationship("User", foreign_keys=[employee_id], back_populates="feedback_received")
+    tags = relationship(
+        "Tag",
+        secondary=feedback_tags,
+        back_populates="feedback"
+    )
+
+class FeedbackRequest(Base):
+    __tablename__ = "feedback_requests"
+
+    id = Column(Integer, primary_key=True, index=True)
+    employee_id = Column(Integer, ForeignKey("users.id"))
+    manager_id = Column(Integer, ForeignKey("users.id"))
+    status = Column(Enum(FeedbackRequestStatus), default=FeedbackRequestStatus.PENDING)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+
+    employee = relationship("User", foreign_keys=[employee_id])
+    manager = relationship("User", foreign_keys=[manager_id]) 

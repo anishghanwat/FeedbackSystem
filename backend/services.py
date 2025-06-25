@@ -1,11 +1,12 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 from typing import List, Optional
 from datetime import datetime
 import jwt
 from passlib.context import CryptContext
-from models import User, Feedback, UserRole, Sentiment
-from schemas import FeedbackCreate, FeedbackUpdate, DashboardStats, EmployeeFeedbackSummary, UserRegistration, UserUpdate
+from models import User, Feedback, UserRole, Sentiment, FeedbackRequest, FeedbackRequestStatus, Tag
+from schemas import FeedbackCreate, FeedbackUpdate, DashboardStats, EmployeeFeedbackSummary, UserRegistration, UserUpdate, Tag as TagSchema
+from fastapi import HTTPException
 
 # Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -111,6 +112,9 @@ def create_feedback(feedback: FeedbackCreate, manager_id: int, db: Session) -> F
         improvements=feedback.improvements,
         sentiment=feedback.sentiment
     )
+    if feedback.tags:
+        db_feedback.tags = get_or_create_tags(db, feedback.tags)
+    
     db.add(db_feedback)
     db.commit()
     db.refresh(db_feedback)
@@ -125,6 +129,10 @@ def update_feedback(feedback_id: int, feedback_update: FeedbackUpdate, db: Sessi
         return None
     
     update_data = feedback_update.dict(exclude_unset=True)
+    
+    if 'tags' in update_data:
+        db_feedback.tags = get_or_create_tags(db, update_data.pop('tags'))
+
     for field, value in update_data.items():
         setattr(db_feedback, field, value)
     
@@ -153,10 +161,16 @@ def unacknowledge_feedback(feedback_id: int, db: Session) -> Optional[Feedback]:
     return db_feedback
 
 def get_manager_feedback(manager_id: int, db: Session) -> List[Feedback]:
-    return db.query(Feedback).filter(Feedback.manager_id == manager_id).all()
+    """
+    Get all feedback given by a specific manager, including tags.
+    """
+    return db.query(Feedback).options(joinedload(Feedback.tags)).filter(Feedback.manager_id == manager_id).all()
 
 def get_employee_feedback(employee_id: int, db: Session) -> List[Feedback]:
-    return db.query(Feedback).filter(Feedback.employee_id == employee_id).all()
+    """
+    Get all feedback for a specific employee, including their tags.
+    """
+    return db.query(Feedback).options(joinedload(Feedback.tags)).filter(Feedback.employee_id == employee_id).all()
 
 def get_dashboard_stats(user_id: int, role: UserRole, db: Session) -> DashboardStats:
     if role == UserRole.MANAGER:
@@ -199,4 +213,64 @@ def get_employee_summaries(manager_id: int, db: Session) -> List[EmployeeFeedbac
             last_feedback_date=last_feedback.created_at if last_feedback else None
         ))
     
-    return summaries 
+    return summaries
+
+def create_feedback_request(employee_id: int, manager_id: int, db: Session) -> FeedbackRequest:
+    request = FeedbackRequest(
+        employee_id=employee_id,
+        manager_id=manager_id,
+        status=FeedbackRequestStatus.PENDING
+    )
+    db.add(request)
+    db.commit()
+    db.refresh(request)
+    return request
+
+def get_feedback_requests_for_manager(manager_id: int, db: Session):
+    return db.query(FeedbackRequest).filter(FeedbackRequest.manager_id == manager_id).all()
+
+def get_feedback_requests_for_employee(employee_id: int, db: Session):
+    return db.query(FeedbackRequest).filter(FeedbackRequest.employee_id == employee_id).all()
+
+def complete_feedback_request(request_id: int, db: Session):
+    request = db.query(FeedbackRequest).filter(FeedbackRequest.id == request_id).first()
+    if not request:
+        return None
+    request.status = FeedbackRequestStatus.COMPLETED
+    request.completed_at = datetime.utcnow()
+    db.commit()
+    db.refresh(request)
+    return request
+
+# Tag services
+def get_or_create_tags(db: Session, tag_names: List[str]) -> List[Tag]:
+    tags = []
+    for name in tag_names:
+        name = name.strip().lower()
+        if not name:
+            continue
+        tag = db.query(Tag).filter(Tag.name == name).first()
+        if not tag:
+            tag = Tag(name=name)
+            db.add(tag)
+            db.commit()
+            db.refresh(tag)
+        tags.append(tag)
+    return tags
+
+def get_all_tags(db: Session) -> List[Tag]:
+    return db.query(Tag).order_by(Tag.name).all()
+
+def add_feedback_comment(db: Session, feedback_id: int, comment: str, user_id: int):
+    db_feedback = db.query(models.Feedback).filter(models.Feedback.id == feedback_id).first()
+    if not db_feedback:
+        raise HTTPException(status_code=404, detail="Feedback not found")
+    
+    # Ensure only the employee to whom the feedback was given can comment
+    if db_feedback.employee_id != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized to comment on this feedback")
+
+    db_feedback.comment = comment
+    db.commit()
+    db.refresh(db_feedback)
+    return db_feedback 

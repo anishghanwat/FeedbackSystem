@@ -9,6 +9,7 @@ import FeedbackForm from './components/FeedbackForm';
 import FeedbackList from './components/FeedbackList';
 import Profile from './components/Profile';
 import Navbar from './components/Navbar';
+import { Toaster } from 'react-hot-toast';
 
 function PrivateRoute({ children, allowedRoles }) {
     const { user, isAuthenticated } = useAuth();
@@ -26,64 +27,62 @@ function PrivateRoute({ children, allowedRoles }) {
 
 function AppRoutes() {
     const { user, isAuthenticated, loading } = useAuth();
-
     if (loading) {
-        // Optionally show a spinner or blank screen while checking auth
         return <div />;
     }
-
     return (
-        <Router>
-            <div className="min-h-screen bg-gray-50">
-                {isAuthenticated && user && <Navbar />}
-                <div className="container mx-auto px-4 py-8">
-                    <Routes>
-                        <Route path="/login" element={<Login />} />
-                        <Route path="/register" element={<Register />} />
-                        <Route
-                            path="/"
-                            element={
-                                <PrivateRoute>
-                                    {user?.role === 'manager' ? <ManagerDashboard /> : <EmployeeDashboard />}
-                                </PrivateRoute>
-                            }
-                        />
-                        <Route
-                            path="/profile"
-                            element={
-                                <PrivateRoute>
-                                    <Profile />
-                                </PrivateRoute>
-                            }
-                        />
-                        <Route
-                            path="/feedback/new"
-                            element={
-                                <PrivateRoute allowedRoles={['manager']}>
-                                    <FeedbackForm />
-                                </PrivateRoute>
-                            }
-                        />
-                        <Route
-                            path="/feedback"
-                            element={
-                                <PrivateRoute>
-                                    <FeedbackList />
-                                </PrivateRoute>
-                            }
-                        />
-                    </Routes>
-                </div>
+        <div className="min-h-screen bg-gray-50">
+            {isAuthenticated && user && <Navbar />}
+            <div className="container mx-auto px-4 py-8">
+                <Routes>
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/register" element={<Register />} />
+                    <Route
+                        path="/"
+                        element={
+                            <PrivateRoute>
+                                {user?.role === 'manager' ? <ManagerDashboard /> : <EmployeeDashboard />}
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/profile"
+                        element={
+                            <PrivateRoute>
+                                <Profile />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/feedback/new"
+                        element={
+                            <PrivateRoute allowedRoles={['manager']}>
+                                <FeedbackForm />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/feedback"
+                        element={
+                            <PrivateRoute>
+                                <FeedbackList />
+                            </PrivateRoute>
+                        }
+                    />
+                </Routes>
             </div>
-        </Router>
+        </div>
     );
 }
 
 function App() {
     return (
-        <AuthProvider>
-            <AppRoutes />
-        </AuthProvider>
+        <Router>
+            <AuthProvider>
+                <Toaster position="top-right" />
+                <AppRoutes />
+            </AuthProvider>
+        </Router>
     );
 }
 
