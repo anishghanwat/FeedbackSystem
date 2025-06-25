@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { MessageSquare, CheckCircle, Clock, TrendingUp, Plus, Tag } from 'lucide-react';
+import api from '../api';
+import { MessageSquare, CheckCircle, Clock, TrendingUp, Plus, Tag, Edit, Trash2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
 
@@ -11,7 +11,9 @@ function EmployeeDashboard() {
     const [loading, setLoading] = useState(true);
     const [requestLoading, setRequestLoading] = useState(false);
     const [requestError, setRequestError] = useState('');
-    const { user } = useAuth();
+    const [editingCommentId, setEditingCommentId] = useState(null);
+    const [editingCommentText, setEditingCommentText] = useState('');
+    useAuth();
 
     useEffect(() => {
         fetchDashboardData();
@@ -21,8 +23,8 @@ function EmployeeDashboard() {
     const fetchDashboardData = async () => {
         try {
             const [feedbackResponse, statsResponse] = await Promise.all([
-                axios.get('http://localhost:8000/feedback/'),
-                axios.get('http://localhost:8000/feedback/dashboard/stats')
+                api.get('/feedback/'),
+                api.get('/feedback/dashboard/stats')
             ]);
             setFeedback(feedbackResponse.data);
             setStats(statsResponse.data);
@@ -35,7 +37,7 @@ function EmployeeDashboard() {
 
     const fetchRequests = async () => {
         try {
-            const response = await axios.get('http://localhost:8000/feedback/feedback-requests/');
+            const response = await api.get('/feedback/feedback-requests/');
             setRequests(response.data);
         } catch (error) {
             setRequests([]);
@@ -46,7 +48,7 @@ function EmployeeDashboard() {
         setRequestLoading(true);
         setRequestError('');
         try {
-            await axios.post('http://localhost:8000/feedback/feedback-requests/', {
+            await api.post('/feedback/feedback-requests/', {
                 manager_id: feedback.length > 0 ? feedback[0].manager.id : null
             });
             fetchRequests();
@@ -64,10 +66,45 @@ function EmployeeDashboard() {
 
     const handleAcknowledge = async (feedbackId) => {
         try {
-            await axios.post(`http://localhost:8000/feedback/${feedbackId}/acknowledge`);
+            await api.post(`/feedback/${feedbackId}/acknowledge`);
             fetchDashboardData(); // Refresh data
         } catch (error) {
             console.error('Error acknowledging feedback:', error);
+            toast.error('Failed to acknowledge feedback.');
+        }
+    };
+
+    const handleEditComment = (item) => {
+        setEditingCommentId(item.id);
+        setEditingCommentText(item.comment || '');
+    };
+
+    const handleUpdateComment = async (feedbackId) => {
+        if (!editingCommentText.trim()) {
+            toast.error("Comment cannot be empty.");
+            return;
+        }
+        try {
+            await api.put(`/feedback/${feedbackId}/comment`, { comment: editingCommentText });
+            setEditingCommentId(null);
+            fetchDashboardData();
+            toast.success("Comment updated successfully!");
+        } catch (error) {
+            console.error('Error updating comment:', error);
+            toast.error("Failed to update comment.");
+        }
+    };
+
+    const handleDeleteComment = async (feedbackId) => {
+        if (window.confirm("Are you sure you want to delete this comment?")) {
+            try {
+                await api.delete(`/feedback/${feedbackId}/comment`);
+                fetchDashboardData();
+                toast.success("Comment deleted successfully!");
+            } catch (error) {
+                console.error('Error deleting comment:', error);
+                toast.error("Failed to delete comment.");
+            }
         }
     };
 
@@ -273,12 +310,42 @@ function EmployeeDashboard() {
                                         </div>
 
                                         {/* Display comment if it exists */}
-                                        {item.comment && (
-                                            <div>
-                                                <h5 className="text-sm font-medium text-gray-700 mb-2">Your Comment</h5>
+                                        {item.comment && editingCommentId !== item.id && (
+                                            <div className="mt-4">
+                                                <div className="flex justify-between items-center">
+                                                    <h5 className="text-sm font-medium text-gray-700 mb-2">Your Comment</h5>
+                                                    <div className="flex space-x-2">
+                                                        <button onClick={() => handleEditComment(item)} className="text-xs text-blue-500 hover:text-blue-700">
+                                                            <Edit className="h-4 w-4" />
+                                                        </button>
+                                                        <button onClick={() => handleDeleteComment(item.id)} className="text-xs text-red-500 hover:text-red-700">
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </button>
+                                                    </div>
+                                                </div>
                                                 <p className="text-sm text-gray-600 bg-blue-50 p-3 rounded-md">
                                                     {item.comment}
                                                 </p>
+                                            </div>
+                                        )}
+
+                                        {editingCommentId === item.id && (
+                                            <div className="mt-4">
+                                                <h5 className="text-sm font-medium text-gray-700 mb-2">Edit Your Comment</h5>
+                                                <textarea
+                                                    value={editingCommentText}
+                                                    onChange={(e) => setEditingCommentText(e.target.value)}
+                                                    className="w-full p-2 border rounded-md"
+                                                    rows="3"
+                                                />
+                                                <div className="flex justify-end space-x-2 mt-2">
+                                                    <button onClick={() => setEditingCommentId(null)} className="px-3 py-1 text-sm rounded-md bg-gray-200 hover:bg-gray-300">
+                                                        Cancel
+                                                    </button>
+                                                    <button onClick={() => handleUpdateComment(item.id)} className="px-3 py-1 text-sm rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                                                        Save
+                                                    </button>
+                                                </div>
                                             </div>
                                         )}
 

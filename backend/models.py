@@ -42,6 +42,7 @@ class User(Base):
     email = Column(String, unique=True, index=True)
     password_hash = Column(String)
     role = Column(Enum(UserRole), default=UserRole.EMPLOYEE)
+    disabled = Column(Boolean, default=False)
     
     # Relationships
     feedback_given = relationship("Feedback", foreign_keys="Feedback.manager_id", back_populates="manager")

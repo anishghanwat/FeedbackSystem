@@ -106,6 +106,9 @@ class Feedback(FeedbackBase):
 class FeedbackComment(BaseModel):
     comment: str
 
+class FeedbackCommentUpdate(BaseModel):
+    comment: str
+
 # Auth schemas
 class LoginRequest(BaseModel):
     username: str

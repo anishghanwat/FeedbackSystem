@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import axios from 'axios';
 import CreatableSelect from 'react-select/creatable';
 import { ArrowLeft, Save } from 'lucide-react';
+import api from '../api';
 
 function FeedbackForm() {
     const [formData, setFormData] = useState({
@@ -23,73 +23,74 @@ function FeedbackForm() {
     const requestId = searchParams.get('request');
 
     useEffect(() => {
-        fetchEmployees();
-        fetchTags();
-        const employeeId = searchParams.get('employee');
-        if (employeeId) {
-            setFormData(prev => ({ ...prev, employee_id: employeeId }));
-        }
+        api.get('/users/employees')
+            .then(response => {
+                setEmployees(response.data.map(emp => ({ value: emp.id, label: emp.name })));
+            })
+            .catch(error => console.error('Error fetching employees:', error));
+
+        api.get('/feedback/tags/')
+            .then(response => {
+                setAllTags(response.data.map(tag => ({ value: tag.name, label: tag.name })));
+            })
+            .catch(error => console.error('Error fetching tags:', error));
+
         if (editId) {
-            setIsEdit(true);
-            fetchFeedbackToEdit(editId);
+            api.get(`/feedback/`)
+                .then(response => {
+                    const feedbackToEdit = response.data.find(fb => fb.id === parseInt(editId));
+                    if (feedbackToEdit) {
+                        setFormData({
+                            employee_id: feedbackToEdit.employee.id,
+                            strengths: feedbackToEdit.strengths,
+                            improvements: feedbackToEdit.improvements,
+                            sentiment: feedbackToEdit.sentiment,
+                            tags: feedbackToEdit.tags.map(tag => tag.name)
+                        });
+                        setIsEdit(true);
+                    }
+                })
+                .catch(error => console.error('Error fetching feedback for edit:', error));
         }
-    }, [searchParams, editId]);
-
-    const fetchTags = async () => {
-        try {
-            const response = await axios.get('http://localhost:8000/feedback/tags/');
-            setAllTags(response.data.map(tag => ({ value: tag.name, label: tag.name })));
-        } catch (error) {
-            console.error("Failed to fetch tags:", error);
-        }
-    };
-
-    const fetchEmployees = async () => {
-        try {
-            const response = await axios.get('http://localhost:8000/users/employees');
-            setEmployees(response.data);
-        } catch (error) {
-            console.error('Error fetching employees:', error);
-        }
-    };
-
-    const fetchFeedbackToEdit = async (id) => {
-        try {
-            const response = await axios.get(`http://localhost:8000/feedback/${id}`);
-            const feedbackData = response.data;
-            setFormData({
-                employee_id: feedbackData.employee_id,
-                strengths: feedbackData.strengths,
-                improvements: feedbackData.improvements,
-                sentiment: feedbackData.sentiment,
-                tags: feedbackData.tags.map(tag => tag.name)
-            });
-        } catch (error) {
-            setError('Failed to load feedback for editing');
-        }
-    };
+    }, [editId]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
         setError('');
 
+        const feedbackData = {
+            employee_id: formData.employee_id,
+            strengths: formData.strengths,
+            improvements: formData.improvements,
+            sentiment: formData.sentiment,
+            tags: formData.tags
+        };
+
         try {
-            if (isEdit && editId) {
-                await axios.put(`http://localhost:8000/feedback/${editId}`, formData);
+            if (editId) {
+                await api.put(`/feedback/${editId}`, feedbackData);
             } else {
-                await axios.post('http://localhost:8000/feedback/', formData);
+                await api.post('/feedback/', feedbackData);
                 if (requestId) {
                     try {
-                        await axios.patch(`http://localhost:8000/feedback/feedback-requests/${requestId}/complete`);
+                        await api.patch(`/feedback/feedback-requests/${requestId}/complete`);
                     } catch (err) {
                         setError('Feedback saved, but failed to mark request as completed.');
                     }
                 }
             }
             navigate('/feedback');
-        } catch (error) {
-            setError(error.response?.data?.detail || 'Error saving feedback');
+        } catch (err) {
+            let errorMessage = 'An error occurred while submitting feedback.';
+            if (err.response?.data?.detail) {
+                if (Array.isArray(err.response.data.detail)) {
+                    errorMessage = err.response.data.detail.map(e => `${e.loc[1]}: ${e.msg}`).join(', ');
+                } else {
+                    errorMessage = err.response.data.detail;
+                }
+            }
+            setError(errorMessage);
         } finally {
             setLoading(false);
         }
@@ -149,8 +150,8 @@ function FeedbackForm() {
                         >
                             <option value="">Select an employee</option>
                             {employees.map((employee) => (
-                                <option key={employee.id} value={employee.id}>
-                                    {employee.name}
+                                <option key={employee.value} value={employee.value}>
+                                    {employee.label}
                                 </option>
                             ))}
                         </select>

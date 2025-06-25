@@ -1,55 +1,43 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import axios from 'axios';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import api from '../api'; // Import the new api instance
 
 const AuthContext = createContext();
 
-export function useAuth() {
-    return useContext(AuthContext);
-}
+export const useAuth = () => useContext(AuthContext);
 
-export function AuthProvider({ children }) {
+export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        // Check for stored user data on app load
-        const storedUser = localStorage.getItem('user');
-        const storedToken = localStorage.getItem('token');
-
-        if (storedUser && storedToken) {
-            setUser(JSON.parse(storedUser));
-            setIsAuthenticated(true);
-            axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+    const fetchUser = useCallback(async () => {
+        const token = localStorage.getItem('token');
+        if (token) {
+            try {
+                const response = await api.get('/users/profile');
+                setUser(response.data);
+            } catch (error) {
+                // Token is invalid or expired
+                logout();
+            }
         }
-
         setLoading(false);
     }, []);
 
+    useEffect(() => {
+        fetchUser();
+    }, [fetchUser]);
+
     const login = async (username, password) => {
         try {
-            const response = await axios.post('http://localhost:8000/auth/login', {
-                username,
-                password
-            });
-
-            const { access_token, user: userData } = response.data;
-
-            // Store in localStorage
-            localStorage.setItem('token', access_token);
-            localStorage.setItem('user', JSON.stringify(userData));
-
-            // Set axios default header
-            axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
-
-            setUser(userData);
-            setIsAuthenticated(true);
-
+            const response = await api.post('/auth/login', { username, password });
+            localStorage.setItem('token', response.data.access_token);
+            await fetchUser(); // Fetch user profile to confirm login and set state
             return { success: true };
         } catch (error) {
+            console.error("Login error:", error);
             return {
                 success: false,
-                error: error.response?.data?.detail || 'Login failed'
+                error: error.response?.data?.detail || 'Login failed. Please check your credentials.'
             };
         }
     };
@@ -57,14 +45,11 @@ export function AuthProvider({ children }) {
     const logout = () => {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
-        delete axios.defaults.headers.common['Authorization'];
         setUser(null);
-        setIsAuthenticated(false);
     };
 
     const value = {
         user,
-        isAuthenticated,
         loading,
         login,
         logout

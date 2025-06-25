@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../api';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { Users, MessageSquare, TrendingUp, CheckCircle, Plus, Mail } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -16,12 +16,14 @@ function ManagerDashboard() {
     useEffect(() => {
         const fetchDashboardData = async () => {
             try {
-                const [statsResponse, employeesResponse] = await Promise.all([
-                    axios.get('http://localhost:8000/feedback/dashboard/stats'),
-                    axios.get('http://localhost:8000/users/employees')
+                const [statsResponse, employeesResponse, requestsResponse] = await Promise.all([
+                    api.get('/feedback/dashboard/stats'),
+                    api.get('/users/employees'),
+                    api.get('/feedback/feedback-requests/')
                 ]);
                 setStats(statsResponse.data);
                 setEmployees(employeesResponse.data);
+                setRequests(requestsResponse.data);
             } catch (error) {
                 console.error('Error fetching dashboard data:', error);
             } finally {
@@ -31,7 +33,7 @@ function ManagerDashboard() {
 
         const fetchRequests = async (isInitialLoad = false) => {
             try {
-                const response = await axios.get('http://localhost:8000/feedback/feedback-requests/');
+                const response = await api.get('/feedback/feedback-requests/');
                 const newRequests = response.data;
                 setRequests(newRequests);
 

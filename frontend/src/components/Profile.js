@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../api';
 import { User, Mail, Save, ArrowLeft, AlertCircle, CheckCircle, Eye, EyeOff, Trash2, XCircle } from 'lucide-react';
 
 function Profile() {
@@ -11,7 +11,8 @@ function Profile() {
         name: '',
         email: '',
         password: '',
-        confirmPassword: ''
+        confirmPassword: '',
+        role: ''
     });
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -27,7 +28,8 @@ function Profile() {
             setFormData(prev => ({
                 ...prev,
                 name: user.name || '',
-                email: user.email || ''
+                email: user.email || '',
+                role: user.role || ''
             }));
         }
     }, [user]);
@@ -61,17 +63,18 @@ function Profile() {
         }
 
         try {
-            const updateData = {
+            const payload = {
                 name: formData.name,
-                email: formData.email
+                email: formData.email,
+                role: formData.role
             };
 
             // Only include password if it's being changed
             if (formData.password) {
-                updateData.password = formData.password;
+                payload.password = formData.password;
             }
 
-            const response = await axios.put('http://localhost:8000/users/profile', updateData);
+            const response = await api.put(`/users/${user.id}`, payload);
 
             setSuccess('Profile updated successfully!');
 
@@ -106,7 +109,7 @@ function Profile() {
         setDeleteLoading(true);
         setDeleteError('');
         try {
-            await axios.delete('http://localhost:8000/users/profile');
+            await api.delete(`/users/${user.id}`);
             logout();
             navigate('/login');
         } catch (error) {
@@ -256,9 +259,10 @@ function Profile() {
                         <input
                             type="text"
                             id="role"
-                            value={user?.role || ''}
+                            value={formData.role}
                             disabled
                             className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50 text-gray-500"
+                            onChange={handleChange}
                         />
                         <p className="mt-1 text-sm text-gray-500">Role cannot be changed</p>
                     </div>

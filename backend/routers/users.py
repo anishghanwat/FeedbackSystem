@@ -1,38 +1,32 @@
 from fastapi import APIRouter, HTTPException, Depends, Header
 from sqlalchemy.orm import Session
 from typing import List
+import services
+import schemas
 from database import get_db
-from schemas import User, UserUpdate
-from services import get_user_by_id, get_employees_for_manager, update_user, delete_user
-import jwt
+from routers.auth import get_current_active_user
 
-router = APIRouter(prefix="/users", tags=["users"])
+router = APIRouter(
+    prefix="/users",
+    tags=["users"],
+    responses={404: {"description": "Not found"}},
+)
 
-SECRET_KEY = "your-secret-key-here"
-ALGORITHM = "HS256"
-
-def get_current_user(authorization: str = Header(...), db: Session = Depends(get_db)):
-    try:
-        token = authorization.replace("Bearer ", "")
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id = int(payload["sub"])
-        return get_user_by_id(user_id, db)
-    except:
-        raise HTTPException(status_code=401, detail="Invalid token")
-
-@router.get("/profile", response_model=User)
-def get_profile(current_user = Depends(get_current_user)):
-    """Get current user profile"""
+@router.get("/profile", response_model=schemas.User)
+async def read_users_me(current_user: schemas.User = Depends(get_current_active_user)):
+    """
+    Get current user's profile.
+    """
     return current_user
 
-@router.put("/profile", response_model=User)
+@router.put("/profile", response_model=schemas.User)
 def update_profile(
-    user_update: UserUpdate,
+    user_update: schemas.UserUpdate,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user: schemas.User = Depends(get_current_active_user)
 ):
     """Update current user profile"""
-    updated_user = update_user(current_user.id, user_update, db)
+    updated_user = services.update_user(db, current_user.id, user_update)
     if not updated_user:
         raise HTTPException(status_code=404, detail="User not found")
     return updated_user
@@ -40,22 +34,22 @@ def update_profile(
 @router.delete("/profile")
 def delete_profile(
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user: schemas.User = Depends(get_current_active_user)
 ):
     """Delete current user account"""
-    success = delete_user(current_user.id, db)
+    success = services.delete_user(db, current_user.id)
     if not success:
         raise HTTPException(status_code=404, detail="User not found")
     return {"message": "Account deleted successfully"}
 
-@router.get("/employees", response_model=List[User])
+@router.get("/employees", response_model=List[schemas.User])
 def get_employees(
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user: schemas.User = Depends(get_current_active_user)
 ):
-    """Get all employees (managers only)"""
-    if current_user.role.value != "manager":
+    """Get all employees (for managers)"""
+    if current_user.role != 'manager':
         raise HTTPException(status_code=403, detail="Only managers can view employees")
     
-    employees = get_employees_for_manager(current_user.id, db)
-    return [User.model_validate(employee) for employee in employees] 
+    employees = services.get_employees_for_manager(current_user.id, db)
+    return employees 

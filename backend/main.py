@@ -1,11 +1,11 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
+import models
 from database import engine
-from models import Base
 from routers import auth, feedback, users
 
 # Create database tables
-Base.metadata.create_all(bind=engine)
+models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="Lightweight Feedback System",
@@ -14,9 +14,13 @@ app = FastAPI(
 )
 
 # Add CORS middleware
+origins = [
+    "http://localhost:3000",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins for development
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -29,7 +33,7 @@ app.include_router(users.router)
 
 @app.get("/")
 def read_root():
-    return {"message": "Lightweight Feedback System API"}
+    return {"message": "Welcome to the Feedback System API"}
 
 @app.get("/health")
 def health_check():

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import axios from 'axios';
+import api from '../api';
 import Select from 'react-select';
 import { MessageSquare, CheckCircle, Clock, Edit, Trash2, XCircle, Tag } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -16,6 +16,8 @@ function FeedbackList() {
     const [deleteId, setDeleteId] = useState(null);
     const [deleteLoading, setDeleteLoading] = useState(false);
     const [deleteError, setDeleteError] = useState('');
+    const [comment, setComment] = useState("");
+    const [editingCommentId, setEditingCommentId] = useState(null);
 
     useEffect(() => {
         fetchFeedback();
@@ -24,7 +26,7 @@ function FeedbackList() {
 
     const fetchFeedback = async () => {
         try {
-            const response = await axios.get('http://localhost:8000/feedback/');
+            const response = await api.get('/feedback/');
             setFeedback(response.data);
         } catch (error) {
             console.error('Error fetching feedback:', error);
@@ -35,7 +37,7 @@ function FeedbackList() {
 
     const fetchTags = async () => {
         try {
-            const response = await axios.get('http://localhost:8000/feedback/tags/');
+            const response = await api.get('/feedback/tags/');
             setAllTags(response.data.map(tag => ({ value: tag.name, label: tag.name })));
         } catch (error) {
             console.error('Failed to fetch tags:', error);
@@ -44,7 +46,7 @@ function FeedbackList() {
 
     const handleAcknowledge = async (feedbackId) => {
         try {
-            await axios.post(`http://localhost:8000/feedback/${feedbackId}/acknowledge`);
+            await api.post(`/feedback/${feedbackId}/acknowledge`);
             fetchFeedback();
         } catch (error) {
             console.error('Error acknowledging feedback:', error);
@@ -53,7 +55,7 @@ function FeedbackList() {
 
     const handleUnacknowledge = async (feedbackId) => {
         try {
-            await axios.post(`http://localhost:8000/feedback/${feedbackId}/unacknowledge`);
+            await api.post(`/feedback/${feedbackId}/unacknowledge`);
             fetchFeedback();
         } catch (error) {
             console.error('Error unacknowledging feedback:', error);
@@ -77,7 +79,7 @@ function FeedbackList() {
         setDeleteLoading(true);
         setDeleteError('');
         try {
-            await axios.delete(`http://localhost:8000/feedback/${deleteId}`);
+            await api.delete(`/feedback/${deleteId}`);
             closeDeleteModal();
             fetchFeedback();
         } catch (error) {
@@ -114,6 +116,19 @@ function FeedbackList() {
         const itemTags = Array.isArray(item.tags) ? item.tags.map(tag => tag.name) : [];
         return selectedTags.every(selectedTag => itemTags.includes(selectedTag.value));
     });
+
+    const handleCommentSubmit = async (feedbackId) => {
+        try {
+            await api.post(`/feedback/${feedbackId}/comment`, {
+                comment: comment
+            });
+            setComment("");
+            setEditingCommentId(null);
+            fetchFeedback();
+        } catch (error) {
+            console.error('Error submitting comment:', error);
+        }
+    };
 
     if (loading) {
         return (
@@ -266,6 +281,47 @@ function FeedbackList() {
                                                 <p className="text-sm text-gray-600 bg-blue-50 p-3 rounded-md">
                                                     {item.comment}
                                                 </p>
+                                            </div>
+                                        )}
+
+                                        {/* Form to add a comment */}
+                                        {user?.role === 'employee' && item.acknowledged && !item.comment && (
+                                            <div className="mt-4">
+                                                {editingCommentId === item.id ? (
+                                                    <div className="space-y-2">
+                                                        <textarea
+                                                            className="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none"
+                                                            rows="3"
+                                                            placeholder="Add your comment..."
+                                                            value={comment}
+                                                            onChange={(e) => setComment(e.target.value)}
+                                                        ></textarea>
+                                                        <div className="flex justify-end space-x-2">
+                                                            <button
+                                                                className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200"
+                                                                onClick={() => setEditingCommentId(null)}
+                                                            >
+                                                                Cancel
+                                                            </button>
+                                                            <button
+                                                                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+                                                                onClick={() => handleCommentSubmit(item.id)}
+                                                            >
+                                                                Submit Comment
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <button
+                                                        className="text-sm text-blue-600 hover:underline"
+                                                        onClick={() => {
+                                                            setEditingCommentId(item.id);
+                                                            setComment(""); // Clear previous comment text
+                                                        }}
+                                                    >
+                                                        Add a comment...
+                                                    </button>
+                                                )}
                                             </div>
                                         )}
 

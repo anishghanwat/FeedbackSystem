@@ -4,6 +4,7 @@ from typing import List, Optional
 from datetime import datetime
 import jwt
 from passlib.context import CryptContext
+import models
 from models import User, Feedback, UserRole, Sentiment, FeedbackRequest, FeedbackRequestStatus, Tag
 from schemas import FeedbackCreate, FeedbackUpdate, DashboardStats, EmployeeFeedbackSummary, UserRegistration, UserUpdate, Tag as TagSchema
 from fastapi import HTTPException
@@ -57,7 +58,7 @@ def create_access_token(data: dict):
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
-def get_user_by_id(user_id: int, db: Session) -> Optional[User]:
+def get_user_by_id(db: Session, user_id: int) -> Optional[User]:
     """Get user by ID from database"""
     return db.query(User).filter(User.id == user_id).first()
 
@@ -67,7 +68,7 @@ def get_user_by_username(username: str, db: Session) -> Optional[User]:
 
 def update_user(user_id: int, user_update: UserUpdate, db: Session) -> Optional[User]:
     """Update user information"""
-    user = get_user_by_id(user_id, db)
+    user = get_user_by_id(db, user_id)
     if not user:
         return None
     
@@ -86,7 +87,7 @@ def update_user(user_id: int, user_update: UserUpdate, db: Session) -> Optional[
 
 def delete_user(user_id: int, db: Session) -> bool:
     """Delete user account"""
-    user = get_user_by_id(user_id, db)
+    user = get_user_by_id(db, user_id)
     if not user:
         return False
     
@@ -164,13 +165,13 @@ def get_manager_feedback(manager_id: int, db: Session) -> List[Feedback]:
     """
     Get all feedback given by a specific manager, including tags.
     """
-    return db.query(Feedback).options(joinedload(Feedback.tags)).filter(Feedback.manager_id == manager_id).all()
+    return db.query(Feedback).options(joinedload(Feedback.tags)).filter(Feedback.manager_id == manager_id).order_by(Feedback.created_at.desc()).all()
 
 def get_employee_feedback(employee_id: int, db: Session) -> List[Feedback]:
     """
     Get all feedback for a specific employee, including their tags.
     """
-    return db.query(Feedback).options(joinedload(Feedback.tags)).filter(Feedback.employee_id == employee_id).all()
+    return db.query(Feedback).options(joinedload(Feedback.tags)).filter(Feedback.employee_id == employee_id).order_by(Feedback.created_at.desc()).all()
 
 def get_dashboard_stats(user_id: int, role: UserRole, db: Session) -> DashboardStats:
     if role == UserRole.MANAGER:
@@ -261,8 +262,8 @@ def get_or_create_tags(db: Session, tag_names: List[str]) -> List[Tag]:
 def get_all_tags(db: Session) -> List[Tag]:
     return db.query(Tag).order_by(Tag.name).all()
 
-def add_feedback_comment(db: Session, feedback_id: int, comment: str, user_id: int):
-    db_feedback = db.query(models.Feedback).filter(models.Feedback.id == feedback_id).first()
+def add_feedback_comment(db: Session, feedback_id: int, comment: str, user_id: int) -> Feedback:
+    db_feedback = db.query(Feedback).filter(Feedback.id == feedback_id).first()
     if not db_feedback:
         raise HTTPException(status_code=404, detail="Feedback not found")
     
@@ -273,4 +274,37 @@ def add_feedback_comment(db: Session, feedback_id: int, comment: str, user_id: i
     db_feedback.comment = comment
     db.commit()
     db.refresh(db_feedback)
-    return db_feedback 
+    return db_feedback
+
+def update_feedback_comment(db: Session, feedback_id: int, comment: str, user_id: int) -> Feedback:
+    db_feedback = db.query(Feedback).filter(Feedback.id == feedback_id).first()
+    if not db_feedback:
+        raise HTTPException(status_code=404, detail="Feedback not found")
+    if db_feedback.employee_id != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized to update this comment")
+
+    db_feedback.comment = comment
+    db.commit()
+    db.refresh(db_feedback)
+    return db_feedback
+
+def delete_feedback_comment(db: Session, feedback_id: int, user_id: int) -> Feedback:
+    db_feedback = db.query(Feedback).filter(Feedback.id == feedback_id).first()
+    if not db_feedback:
+        raise HTTPException(status_code=404, detail="Feedback not found")
+    if db_feedback.employee_id != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this comment")
+
+    db_feedback.comment = None
+    db.commit()
+    db.refresh(db_feedback)
+    return db_feedback
+
+def delete_feedback(db: Session, feedback_id: int) -> bool:
+    """Deletes a feedback entry from the database."""
+    db_feedback = db.query(Feedback).filter(Feedback.id == feedback_id).first()
+    if db_feedback:
+        db.delete(db_feedback)
+        db.commit()
+        return True
+    return False 
