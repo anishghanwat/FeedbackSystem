@@ -140,10 +140,22 @@ function FeedbackList() {
     let sentFeedback = [];
     let receivedFromManagers = [];
     let receivedFromPeers = [];
+    let anonymousFeedback = [];
     if (user?.role === 'employee') {
         sentFeedback = feedback.filter(item => item.manager && item.manager.id === user.id);
         receivedFromManagers = feedback.filter(item => item.employee && item.employee.id === user.id && item.manager && item.manager.role === 'manager');
         receivedFromPeers = feedback.filter(item => item.employee && item.employee.id === user.id && item.manager && item.manager.role === 'employee' && item.manager.id !== user.id);
+        anonymousFeedback = feedback.filter(item => item.anonymous === true);
+    }
+    // Classification logic for managers
+    if (user?.role === 'manager') {
+        // Feedback sent by this manager
+        sentFeedback = feedback.filter(item => item.manager && item.manager.id === user.id);
+        // Feedback received by this manager (not common, but for completeness)
+        receivedFromManagers = feedback.filter(item => item.employee && item.employee.id === user.id && item.manager && item.manager.role === 'manager');
+        // Feedback received from peers (if manager can receive feedback from employees)
+        receivedFromPeers = feedback.filter(item => item.employee && item.employee.id === user.id && item.manager && item.manager.role === 'employee' && item.manager.id !== user.id);
+        anonymousFeedback = feedback.filter(item => item.anonymous === true);
     }
 
     // Prepare tab data
@@ -156,6 +168,7 @@ function FeedbackList() {
         { key: 'received', label: 'Received', count: receivedFromManagers.length + receivedFromPeers.length },
         { key: 'fromManagers', label: 'From Managers', count: receivedFromManagers.length },
         { key: 'fromPeers', label: 'From Peers', count: receivedFromPeers.length },
+        { key: 'anonymous', label: 'Anonymous', count: anonymousFeedback.length },
     ];
 
     // Filter feedback to display based on active tab
@@ -164,6 +177,7 @@ function FeedbackList() {
     if (activeTab === 'received') feedbackToDisplay = [...receivedFromManagers, ...receivedFromPeers];
     if (activeTab === 'fromManagers') feedbackToDisplay = receivedFromManagers;
     if (activeTab === 'fromPeers') feedbackToDisplay = receivedFromPeers;
+    if (activeTab === 'anonymous') feedbackToDisplay = anonymousFeedback;
 
     if (loading) {
         return (

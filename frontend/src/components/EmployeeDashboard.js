@@ -99,12 +99,15 @@ function EmployeeDashboard() {
     const topTags = analytics.topTags.map(t => ({ ...t, count: Number(t.count) }));
     console.log('Top Tags Data:', topTags);
 
+    // Calculate anonymous feedback count for this employee
+    const anonymousCount = feedback.filter(item => item.anonymous === true && item.employee && user && item.employee.id === user.id).length;
+
     return (
         <div className="space-y-6">
             <h1 className="text-2xl font-bold text-primary-900 font-poppins tracking-tight">My Dashboard</h1>
 
             {/* Feedback Request Section */}
-            <div className="glass shadow rounded-xl p-4 flex items-center space-x-4 mb-2 border border-white/30">
+            <div className="glass shadow rounded-xl p-4 flex items-center space-x-4 mb-2 border border-white/30 mt-32">
                 <Link
                     to="/feedback-request/new"
                     className="inline-flex items-center px-4 py-2 border border-primary-300 text-sm font-medium rounded-lg text-primary-700 bg-primary-100/80 hover:bg-primary-200/80 disabled:opacity-50 font-inter transition-colors duration-200"
@@ -135,7 +138,7 @@ function EmployeeDashboard() {
             </div>
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mt-4">
                 <div className="glass overflow-hidden shadow rounded-xl border border-white/30">
                     <div className="p-5">
                         <div className="flex items-center">
@@ -209,6 +212,27 @@ function EmployeeDashboard() {
                                     </dt>
                                     <dd className="text-lg font-semibold text-primary-900 font-poppins">
                                         {stats?.total_feedback ? Math.round((stats.positive_feedback / stats.total_feedback) * 100) : 0}%
+                                    </dd>
+                                </dl>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Anonymous Stat Card */}
+                <div className="glass overflow-hidden shadow rounded-xl border border-white/30">
+                    <div className="p-5">
+                        <div className="flex items-center">
+                            <div className="flex-shrink-0">
+                                <MessageSquare className="h-6 w-6 text-primary-400" />
+                            </div>
+                            <div className="ml-5 w-0 flex-1">
+                                <dl>
+                                    <dt className="text-sm font-medium text-primary-600 truncate font-inter">
+                                        Anonymous
+                                    </dt>
+                                    <dd className="text-lg font-semibold text-primary-900 font-poppins">
+                                        {anonymousCount}
                                     </dd>
                                 </dl>
                             </div>

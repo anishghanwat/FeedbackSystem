@@ -31,6 +31,15 @@ A full-stack web application for sharing internal feedback between managers and 
 - Acknowledgment tracking
 - Timestamp and audit trail
 
+### Bonus Features
+- In-app notifications (notification bell)
+- Email notifications
+- Feedback requests (employees can request feedback from managers)
+- Anonymous peer feedback (with optional flag)
+- Tagging and tag filtering (e.g., communication, leadership)
+- Export feedback as PDF (for managers)
+- Employee comments on feedback (with markdown support)
+
 ## 🛠️ Tech Stack
 
 ### Backend
@@ -79,7 +88,12 @@ InternshipAssignment/
 │   │   │   ├── ManagerDashboard.js
 │   │   │   ├── EmployeeDashboard.js
 │   │   │   ├── FeedbackForm.js
-│   │   │   └── FeedbackList.js
+│   │   │   ├── FeedbackList.js
+│   │   │   ├── FeedbackDetail.js
+│   │   │   ├── FeedbackItem.js
+│   │   │   ├── FeedbackRequestForm.js
+│   │   │   ├── FeedbackRequestList.js
+│   │   │   └── NotificationBell.js
 │   │   ├── contexts/
 │   │   │   └── AuthContext.js
 │   │   ├── App.js
@@ -263,8 +277,6 @@ docker-compose up --build
 
 - Email verification for registration
 - Password reset functionality
-- Real-time notifications
-- Email notifications
 - Feedback templates
 - Advanced analytics
 - Team hierarchy management
@@ -284,6 +296,35 @@ docker-compose up --build
 
 This project is created for internship assignment purposes.
 
----
+## 🧪 Testing
 
-**Note:** This application includes proper user registration, authentication, and profile management. All passwords are securely hashed and user data is properly validated. 
+### Backend
+```bash
+cd backend
+pytest
+```
+
+### Frontend
+```bash
+cd frontend
+npm test
+```
+
+**Note:** This application includes proper user registration, authentication, and profile management. All passwords are securely hashed and user data is properly validated.
+
+## 📸 Screenshots & ERD
+
+### Employee Dashboard
+![Employee Dashboard](./screenshots/employee_dashboard.png)
+
+### Manager Dashboard
+![Manager Dashboard](./screenshots/manager_dashboard.png)
+
+### Feedback List (Employee)
+![Employee Feedback List](./screenshots/feedback_list_employee.png)
+
+### Feedback List (Manager)
+![Manager Feedback List](./screenshots/feedback_list_manager.png)
+
+### Entity Relationship Diagram (ERD)
+![ER Diagram](./screenshots/erd.png) 

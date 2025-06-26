@@ -1,15 +1,37 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Bell, CheckCheck } from 'lucide-react';
 import api from '../api';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import ReactDOM from 'react-dom';
 
 function NotificationBell() {
     const [notifications, setNotifications] = useState([]);
     const [isOpen, setIsOpen] = useState(false);
     const { user } = useAuth();
     const [unreadCount, setUnreadCount] = useState(0);
+    const bellRef = useRef(null);
+    const dropdownRef = useRef(null);
+
+    // Close dropdown on outside click
+    useEffect(() => {
+        if (!isOpen) return;
+        function handleClick(event) {
+            if (
+                bellRef.current && !bellRef.current.contains(event.target) &&
+                dropdownRef.current && !dropdownRef.current.contains(event.target)
+            ) {
+                setIsOpen(false);
+            }
+        }
+        document.addEventListener('mousedown', handleClick);
+        document.addEventListener('touchstart', handleClick);
+        return () => {
+            document.removeEventListener('mousedown', handleClick);
+            document.removeEventListener('touchstart', handleClick);
+        };
+    }, [isOpen]);
 
     const fetchNotifications = useCallback(async () => {
         if (!user) return;
@@ -64,7 +86,7 @@ function NotificationBell() {
     };
 
     return (
-        <div className="relative">
+        <div className="relative" ref={bellRef}>
             <button onClick={() => setIsOpen(!isOpen)} className="relative">
                 <Bell className="h-6 w-6 text-primary-500 hover:text-primary-700 transition-colors duration-200" />
                 {unreadCount > 0 && (
@@ -72,8 +94,8 @@ function NotificationBell() {
                 )}
             </button>
 
-            {isOpen && (
-                <div className="absolute right-0 mt-2 w-80 glass rounded-xl shadow-lg overflow-hidden z-20 border border-white/30">
+            {isOpen && ReactDOM.createPortal(
+                <div ref={dropdownRef} className="absolute top-12 right-64 left-auto w-80 glass rounded-xl shadow-lg overflow-hidden z-[99999] border border-white/30">
                     <div className="py-3 px-4 flex justify-between items-center border-b border-white/30">
                         <h3 className="font-semibold text-primary-900 font-poppins">Notifications</h3>
                         {unreadCount > 0 && (
@@ -83,26 +105,25 @@ function NotificationBell() {
                             </button>
                         )}
                     </div>
-                    <div className="divide-y divide-white/30 max-h-96 overflow-y-auto">
-                        {notifications.length > 0 ? (
-                            notifications.map(n => (
-                                <Link
-                                    key={n.id}
-                                    to={n.link || '#'}
-                                    onClick={() => handleNotificationClick(n)}
-                                    className={`block p-4 hover:bg-white/50 transition-colors duration-200 ${!n.read ? 'bg-primary-50/80' : ''}`}
-                                >
-                                    <p className="text-sm text-primary-700 font-inter">{n.message}</p>
-                                    <p className="text-xs text-primary-500 mt-1 font-inter">{formatDate(n.created_at)}</p>
-                                </Link>
-                            ))
-                        ) : (
-                            <div className="p-6 text-center">
-                                <p className="text-sm text-primary-500 font-inter">You have no notifications.</p>
-                            </div>
-                        )}
-                    </div>
-                </div>
+                    {notifications.length > 0 ? (
+                        notifications.map(n => (
+                            <Link
+                                key={n.id}
+                                to={n.link || '#'}
+                                onClick={() => handleNotificationClick(n)}
+                                className={`block p-4 hover:bg-white/50 transition-colors duration-200 ${!n.read ? 'bg-primary-50/80' : ''}`}
+                            >
+                                <p className="text-sm text-primary-700 font-inter">{n.message}</p>
+                                <p className="text-xs text-primary-500 mt-1 font-inter">{formatDate(n.created_at)}</p>
+                            </Link>
+                        ))
+                    ) : (
+                        <div className="p-6 text-center">
+                            <p className="text-sm text-primary-500 font-inter">You have no notifications.</p>
+                        </div>
+                    )}
+                </div>,
+                document.body
             )}
         </div>
     );
