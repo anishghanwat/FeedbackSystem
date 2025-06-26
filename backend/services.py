@@ -1,3 +1,8 @@
+"""
+services.py - Business logic and utility functions for the Lightweight Feedback System.
+Handles authentication, feedback creation, notifications, analytics, and user management.
+"""
+
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 from typing import List, Optional
@@ -12,7 +17,7 @@ from collections import defaultdict
 from sqlalchemy import extract
 import os
 
-# Password hashing
+# Password hashing context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # JWT settings (for demo purposes - in production use proper secret)
@@ -20,21 +25,21 @@ SECRET_KEY = os.environ.get("SECRET_KEY", "your-secret-key-here")
 ALGORITHM = os.environ.get("JWT_ALGORITHM", "HS256")
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verify a plain password against a hashed password."""
     return pwd_context.verify(plain_password, hashed_password)
 
 def get_password_hash(password: str) -> str:
+    """Hash a password for secure storage."""
     return pwd_context.hash(password)
 
 def create_user(user_data: UserRegistration, db: Session) -> User:
-    """Create a new user"""
+    """Create a new user in the database."""
     # Check if username or email already exists
     existing_user = db.query(User).filter(
         (User.username == user_data.username) | (User.email == user_data.email)
     ).first()
-    
     if existing_user:
         raise ValueError("Username or email already registered")
-    
     # Create new user
     db_user = User(
         name=user_data.name,
@@ -43,20 +48,20 @@ def create_user(user_data: UserRegistration, db: Session) -> User:
         password_hash=get_password_hash(user_data.password),
         role=user_data.role
     )
-    
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
     return db_user
 
 def authenticate_user(username: str, password: str, db: Session) -> Optional[User]:
-    """Authenticate user against database"""
+    """Authenticate user against database."""
     user = db.query(User).filter(User.username == username).first()
     if user and verify_password(password, user.password_hash):
         return user
     return None
 
 def create_access_token(data: dict):
+    """Create a JWT access token for authentication."""
     to_encode = data.copy()
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt

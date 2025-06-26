@@ -1,3 +1,8 @@
+"""
+main.py - FastAPI application entry point for the Lightweight Feedback System.
+Handles app creation, CORS setup, and router inclusion for authentication, feedback, users, and notifications.
+"""
+
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 import models
@@ -5,7 +10,7 @@ from database import engine
 from routers import auth, feedback, users, notifications
 import os
 
-# Create database tables
+# Create database tables if they don't exist
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
@@ -14,8 +19,8 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Add CORS middleware - Configurable for deployment
-# Set FRONTEND_ORIGINS env var to a comma-separated list of allowed origins (e.g., https://your-frontend.onrender.com)
+# CORS middleware setup
+# FRONTEND_ORIGINS env var should be set to a comma-separated list of allowed frontend URLs
 origins = os.environ.get(
     "FRONTEND_ORIGINS",
     "http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001"
@@ -30,7 +35,7 @@ app.add_middleware(
     expose_headers=["*"]
 )
 
-# Include routers
+# Register all API routers
 app.include_router(auth.router)
 app.include_router(feedback.router)
 app.include_router(users.router)
@@ -38,8 +43,10 @@ app.include_router(notifications.router)
 
 @app.get("/")
 def read_root():
+    """Root endpoint for health check or welcome message."""
     return {"message": "Welcome to the Feedback System API"}
 
 @app.get("/health")
 def health_check():
+    """Health check endpoint for deployment monitoring."""
     return {"status": "healthy"} 
