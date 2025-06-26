@@ -1,9 +1,10 @@
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
+import os
 
 conf = ConnectionConfig(
-    MAIL_USERNAME = "myfeedbacksystem@gmail.com",
-    MAIL_PASSWORD = "uzhm ymrx tkox zmnp",
-    MAIL_FROM = "myfeedbacksystem@gmail.com",
+    MAIL_USERNAME = os.environ.get("MAIL_USERNAME", "myfeedbacksystem@gmail.com"),
+    MAIL_PASSWORD = os.environ.get("MAIL_PASSWORD", "uzhm ymrx tkox zmnp"),
+    MAIL_FROM = os.environ.get("MAIL_FROM", "myfeedbacksystem@gmail.com"),
     MAIL_PORT = 587,
     MAIL_SERVER = "smtp.gmail.com",
     MAIL_STARTTLS = True,      # Use this for most SMTP servers (like Gmail)

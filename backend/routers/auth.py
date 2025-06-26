@@ -6,11 +6,12 @@ from database import get_db, engine
 from schemas import LoginRequest, LoginResponse, UserRegistration, RegistrationResponse, User as UserSchema
 from services import authenticate_user, create_user, get_user_by_id
 from models import User
+import os
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 
-SECRET_KEY = "your-secret-key-here"
-ALGORITHM = "HS256"
+SECRET_KEY = os.environ.get("SECRET_KEY", "your-secret-key-here")
+ALGORITHM = os.environ.get("JWT_ALGORITHM", "HS256")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):

@@ -10,13 +10,14 @@ from schemas import FeedbackCreate, FeedbackUpdate, DashboardStats, EmployeeFeed
 from fastapi import HTTPException
 from collections import defaultdict
 from sqlalchemy import extract
+import os
 
 # Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # JWT settings (for demo purposes - in production use proper secret)
-SECRET_KEY = "your-secret-key-here"
-ALGORITHM = "HS256"
+SECRET_KEY = os.environ.get("SECRET_KEY", "your-secret-key-here")
+ALGORITHM = os.environ.get("JWT_ALGORITHM", "HS256")
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)

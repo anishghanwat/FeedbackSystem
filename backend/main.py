@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import models
 from database import engine
 from routers import auth, feedback, users, notifications
+import os
 
 # Create database tables
 models.Base.metadata.create_all(bind=engine)
@@ -13,14 +14,12 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Add CORS middleware - More permissive for development
-origins = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "http://localhost:3001",
-    "http://127.0.0.1:3001",
-    "*"  # Allow all origins for development
-]
+# Add CORS middleware - Configurable for deployment
+# Set FRONTEND_ORIGINS env var to a comma-separated list of allowed origins (e.g., https://your-frontend.onrender.com)
+origins = os.environ.get(
+    "FRONTEND_ORIGINS",
+    "http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001"
+).split(",")
 
 app.add_middleware(
     CORSMiddleware,
