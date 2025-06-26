@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../api';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { Users, MessageSquare, TrendingUp, CheckCircle, Plus, Mail } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, AreaChart, Area } from 'recharts';
+import { Users, MessageSquare, TrendingUp, CheckCircle, Plus, Mail, Tag, Clock } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { jsPDF } from 'jspdf';
 
@@ -10,6 +10,12 @@ function ManagerDashboard() {
     const [stats, setStats] = useState(null);
     const [employees, setEmployees] = useState([]);
     const [requests, setRequests] = useState([]);
+    const [analytics, setAnalytics] = useState({
+        trends: [],
+        ackRate: [],
+        topTags: [],
+        unacknowledged: []
+    });
     const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
     const notifiedRequestIds = useRef(new Set());
@@ -17,14 +23,24 @@ function ManagerDashboard() {
     useEffect(() => {
         const fetchDashboardData = async () => {
             try {
-                const [statsResponse, employeesResponse, requestsResponse] = await Promise.all([
+                const [statsResponse, employeesResponse, requestsResponse, trendsResponse, ackRateResponse, topTagsResponse, unacknowledgedResponse] = await Promise.all([
                     api.get('/feedback/dashboard/stats'),
                     api.get('/users/employees'),
-                    api.get('/feedback/feedback-requests/')
+                    api.get('/feedback/feedback-requests/'),
+                    api.get('/feedback/analytics/trends'),
+                    api.get('/feedback/analytics/ack_rate'),
+                    api.get('/feedback/analytics/top-tags'),
+                    api.get('/feedback/analytics/unacknowledged')
                 ]);
                 setStats(statsResponse.data);
                 setEmployees(employeesResponse.data);
                 setRequests(requestsResponse.data);
+                setAnalytics({
+                    trends: trendsResponse.data.trends,
+                    ackRate: ackRateResponse.data.trends,
+                    topTags: topTagsResponse.data.tags,
+                    unacknowledged: unacknowledgedResponse.data.feedback
+                });
             } catch (error) {
                 console.error('Error fetching dashboard data:', error);
             } finally {
@@ -112,12 +128,6 @@ function ManagerDashboard() {
 
     const pendingRequests = requests.filter(r => r.status === 'pending');
 
-    const chartData = stats ? [
-        { name: 'Positive', value: stats.positive_feedback, color: '#10B981' },
-        { name: 'Neutral', value: stats.neutral_feedback, color: '#6B7280' },
-        { name: 'Negative', value: stats.negative_feedback, color: '#EF4444' }
-    ] : [];
-
     if (loading) {
         return (
             <div className="flex items-center justify-center h-64">
@@ -128,29 +138,29 @@ function ManagerDashboard() {
 
     return (
         <div className="space-y-6">
-            {/* Team Members - moved up for better layout */}
-            <div className="bg-white shadow rounded-lg">
-                <div className="px-6 py-4 border-b border-gray-200">
-                    <h3 className="text-lg font-medium text-gray-900">Team Members</h3>
+            {/* Team Members */}
+            <div className="glass p-6 mb-6 border border-white/30 rounded-xl shadow">
+                <div className="px-6 py-4 border-b border-white/30">
+                    <h3 className="text-lg font-semibold text-primary-900 font-poppins">Team Members</h3>
                 </div>
-                <div className="divide-y divide-gray-200">
+                <div className="divide-y divide-white/30">
                     {employees.map((employee) => (
                         <div key={employee.id} className="px-6 py-4 flex items-center justify-between">
                             <div>
-                                <h4 className="text-sm font-medium text-gray-900">{employee.name}</h4>
-                                <p className="text-sm text-gray-500">{employee.username}</p>
+                                <h4 className="text-sm font-semibold text-primary-900 font-poppins">{employee.name}</h4>
+                                <p className="text-sm text-primary-500 font-inter">{employee.username}</p>
                             </div>
                             <div className="flex space-x-2">
                                 <Link
                                     to={`/feedback/new?employee=${employee.id}`}
-                                    className="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-primary-700 bg-primary-100 hover:bg-primary-200"
+                                    className="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-lg text-primary-700 bg-primary-100/80 hover:bg-primary-200/80 font-inter transition-colors duration-200"
                                 >
                                     <Plus className="h-3 w-3 mr-1" />
                                     Give Feedback
                                 </Link>
                                 <button
                                     onClick={() => handleDownloadPDF(employee)}
-                                    className="inline-flex items-center px-3 py-1 border border-blue-300 text-sm font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200"
+                                    className="inline-flex items-center px-3 py-1 border border-blue-300 text-sm font-medium rounded-lg text-blue-700 bg-blue-100/80 hover:bg-blue-200/80 font-inter transition-colors duration-200"
                                     title="Download all feedback for this employee as PDF"
                                 >
                                     Download PDF
@@ -163,18 +173,18 @@ function ManagerDashboard() {
 
             {/* Pending Feedback Requests */}
             {pendingRequests.length > 0 && (
-                <div className="bg-white shadow rounded-lg p-4 mb-2">
-                    <h3 className="text-lg font-medium text-gray-900 mb-2 flex items-center">
+                <div className="glass p-6 mb-6 border border-white/30 rounded-xl shadow">
+                    <h3 className="text-lg font-semibold text-primary-900 mb-2 flex items-center font-poppins">
                         <Mail className="h-5 w-5 mr-2 text-primary-600" />
                         Pending Feedback Requests
                     </h3>
-                    <ul className="divide-y divide-gray-200">
+                    <ul className="divide-y divide-white/30">
                         {pendingRequests.map((req) => (
                             <li key={req.id} className="py-2 flex items-center justify-between">
-                                <span className="text-gray-800 font-medium">{req.employee.name}</span>
+                                <span className="text-primary-900 font-medium font-inter">{req.employee.name}</span>
                                 <button
                                     onClick={() => handleGiveFeedback(req.employee.id, req.id)}
-                                    className="inline-flex items-center px-3 py-1 border border-primary-300 text-sm font-medium rounded-md text-primary-700 bg-primary-100 hover:bg-primary-200"
+                                    className="inline-flex items-center px-3 py-1 border border-primary-300 text-sm font-medium rounded-lg text-primary-700 bg-primary-100/80 hover:bg-primary-200/80 font-inter transition-colors duration-200"
                                 >
                                     <Plus className="h-4 w-4 mr-1" />
                                     Give Feedback
@@ -187,123 +197,219 @@ function ManagerDashboard() {
 
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div className="bg-white overflow-hidden shadow rounded-lg">
-                    <div className="p-5">
-                        <div className="flex items-center">
-                            <div className="flex-shrink-0">
-                                <MessageSquare className="h-6 w-6 text-gray-400" />
-                            </div>
-                            <div className="ml-5 w-0 flex-1">
-                                <dl>
-                                    <dt className="text-sm font-medium text-gray-500 truncate">
-                                        Total Feedback
-                                    </dt>
-                                    <dd className="text-lg font-medium text-gray-900">
-                                        {stats?.total_feedback || 0}
-                                    </dd>
-                                </dl>
-                            </div>
+                <div className="glass p-6 mb-6 border border-white/30 rounded-xl shadow">
+                    <div className="flex items-center">
+                        <div className="flex-shrink-0">
+                            <MessageSquare className="h-6 w-6 text-primary-400" />
+                        </div>
+                        <div className="ml-5 w-0 flex-1">
+                            <dl>
+                                <dt className="text-sm font-medium text-primary-600 truncate font-inter">Total Feedback</dt>
+                                <dd className="text-lg font-semibold text-primary-900 font-poppins">{stats?.total_feedback || 0}</dd>
+                            </dl>
                         </div>
                     </div>
                 </div>
-
-                <div className="bg-white overflow-hidden shadow rounded-lg">
-                    <div className="p-5">
-                        <div className="flex items-center">
-                            <div className="flex-shrink-0">
-                                <Users className="h-6 w-6 text-gray-400" />
-                            </div>
-                            <div className="ml-5 w-0 flex-1">
-                                <dl>
-                                    <dt className="text-sm font-medium text-gray-500 truncate">
-                                        Team Members
-                                    </dt>
-                                    <dd className="text-lg font-medium text-gray-900">
-                                        {employees.length}
-                                    </dd>
-                                </dl>
-                            </div>
+                <div className="glass p-6 mb-6 border border-white/30 rounded-xl shadow">
+                    <div className="flex items-center">
+                        <div className="flex-shrink-0">
+                            <Users className="h-6 w-6 text-primary-400" />
+                        </div>
+                        <div className="ml-5 w-0 flex-1">
+                            <dl>
+                                <dt className="text-sm font-medium text-primary-600 truncate font-inter">Team Members</dt>
+                                <dd className="text-lg font-semibold text-primary-900 font-poppins">{employees.length}</dd>
+                            </dl>
                         </div>
                     </div>
                 </div>
-
-                <div className="bg-white overflow-hidden shadow rounded-lg">
-                    <div className="p-5">
-                        <div className="flex items-center">
-                            <div className="flex-shrink-0">
-                                <CheckCircle className="h-6 w-6 text-gray-400" />
-                            </div>
-                            <div className="ml-5 w-0 flex-1">
-                                <dl>
-                                    <dt className="text-sm font-medium text-gray-500 truncate">
-                                        Acknowledged
-                                    </dt>
-                                    <dd className="text-lg font-medium text-gray-900">
-                                        {stats?.acknowledged_feedback || 0}
-                                    </dd>
-                                </dl>
-                            </div>
+                <div className="glass p-6 mb-6 border border-white/30 rounded-xl shadow">
+                    <div className="flex items-center">
+                        <div className="flex-shrink-0">
+                            <CheckCircle className="h-6 w-6 text-primary-400" />
+                        </div>
+                        <div className="ml-5 w-0 flex-1">
+                            <dl>
+                                <dt className="text-sm font-medium text-primary-600 truncate font-inter">Acknowledged</dt>
+                                <dd className="text-lg font-semibold text-primary-900 font-poppins">{stats?.acknowledged_feedback || 0}</dd>
+                            </dl>
                         </div>
                     </div>
                 </div>
-
-                <div className="bg-white overflow-hidden shadow rounded-lg">
-                    <div className="p-5">
-                        <div className="flex items-center">
-                            <div className="flex-shrink-0">
-                                <TrendingUp className="h-6 w-6 text-gray-400" />
-                            </div>
-                            <div className="ml-5 w-0 flex-1">
-                                <dl>
-                                    <dt className="text-sm font-medium text-gray-500 truncate">
-                                        Positive Rate
-                                    </dt>
-                                    <dd className="text-lg font-medium text-gray-900">
-                                        {stats?.total_feedback ? Math.round((stats.positive_feedback / stats.total_feedback) * 100) : 0}%
-                                    </dd>
-                                </dl>
-                            </div>
+                <div className="glass p-6 mb-6 border border-white/30 rounded-xl shadow">
+                    <div className="flex items-center">
+                        <div className="flex-shrink-0">
+                            <TrendingUp className="h-6 w-6 text-primary-400" />
+                        </div>
+                        <div className="ml-5 w-0 flex-1">
+                            <dl>
+                                <dt className="text-sm font-medium text-primary-600 truncate font-inter">Positive Rate</dt>
+                                <dd className="text-lg font-semibold text-primary-900 font-poppins">{stats?.total_feedback ? Math.round((stats.positive_feedback / stats.total_feedback) * 100) : 0}%</dd>
+                            </dl>
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* Charts */}
+            {/* Analytics Charts */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="bg-white p-6 rounded-lg shadow">
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">Sentiment Distribution</h3>
+                {/* Feedback Trends Over Time */}
+                <div className="glass p-6 mb-6 border border-white/30 rounded-xl shadow">
+                    <h3 className="text-lg font-semibold text-primary-900 mb-4 flex items-center font-poppins">
+                        <TrendingUp className="h-5 w-5 mr-2 text-primary-600" />
+                        Feedback Trends Over Time
+                    </h3>
                     <ResponsiveContainer width="100%" height={300}>
-                        <PieChart>
-                            <Pie
-                                data={chartData}
-                                cx="50%"
-                                cy="50%"
-                                labelLine={false}
-                                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                                outerRadius={80}
-                                fill="#8884d8"
-                                dataKey="value"
-                            >
-                                {chartData.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={entry.color} />
-                                ))}
-                            </Pie>
-                            <Tooltip />
-                        </PieChart>
+                        <AreaChart data={analytics.trends}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                            <XAxis
+                                dataKey="date"
+                                tick={{ fontSize: 12, fill: '#6b7280' }}
+                                tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                            />
+                            <YAxis tick={{ fontSize: 12, fill: '#6b7280' }} />
+                            <Tooltip
+                                contentStyle={{
+                                    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                                    border: '1px solid #e5e7eb',
+                                    borderRadius: '8px'
+                                }}
+                                labelFormatter={(value) => new Date(value).toLocaleDateString()}
+                            />
+                            <Area
+                                type="monotone"
+                                dataKey="count"
+                                stroke="#3b82f6"
+                                fill="#3b82f6"
+                                fillOpacity={0.3}
+                                strokeWidth={2}
+                            />
+                        </AreaChart>
                     </ResponsiveContainer>
                 </div>
 
-                <div className="bg-white p-6 rounded-lg shadow">
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">Feedback by Sentiment</h3>
+                {/* Acknowledgment Rate Over Time */}
+                <div className="glass p-6 mb-6 border border-white/30 rounded-xl shadow">
+                    <h3 className="text-lg font-semibold text-primary-900 mb-4 flex items-center font-poppins">
+                        <CheckCircle className="h-5 w-5 mr-2 text-primary-600" />
+                        Acknowledgment Rate Over Time
+                    </h3>
                     <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={chartData}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="name" />
-                            <YAxis />
-                            <Tooltip />
-                            <Bar dataKey="value" fill="#3B82F6" />
+                        <LineChart data={analytics.ackRate}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                            <XAxis
+                                dataKey="date"
+                                tick={{ fontSize: 12, fill: '#6b7280' }}
+                                tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                            />
+                            <YAxis tick={{ fontSize: 12, fill: '#6b7280' }} />
+                            <Tooltip
+                                contentStyle={{
+                                    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                                    border: '1px solid #e5e7eb',
+                                    borderRadius: '8px'
+                                }}
+                                labelFormatter={(value) => new Date(value).toLocaleDateString()}
+                                formatter={(value, name) => [value, name === 'acknowledged' ? 'Acknowledged' : 'Total']}
+                            />
+                            <Line
+                                type="monotone"
+                                dataKey="acknowledged"
+                                stroke="#10b981"
+                                strokeWidth={2}
+                                dot={{ fill: '#10b981', strokeWidth: 2, r: 4 }}
+                            />
+                            <Line
+                                type="monotone"
+                                dataKey="total"
+                                stroke="#6b7280"
+                                strokeWidth={2}
+                                strokeDasharray="5 5"
+                                dot={{ fill: '#6b7280', strokeWidth: 2, r: 4 }}
+                            />
+                        </LineChart>
+                    </ResponsiveContainer>
+                </div>
+
+                {/* Top Feedback Tags */}
+                <div className="glass p-6 mb-6 border border-white/30 rounded-xl shadow">
+                    <h3 className="text-lg font-semibold text-primary-900 mb-4 flex items-center font-poppins">
+                        <Tag className="h-5 w-5 mr-2 text-primary-600" />
+                        Top Feedback Tags
+                    </h3>
+                    <ResponsiveContainer width="100%" height={300}>
+                        <BarChart data={analytics.topTags} layout="horizontal">
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                            <XAxis type="number" tick={{ fontSize: 12, fill: '#6b7280' }} />
+                            <YAxis
+                                type="category"
+                                dataKey="tag"
+                                tick={{ fontSize: 12, fill: '#6b7280' }}
+                                width={80}
+                            />
+                            <Tooltip
+                                contentStyle={{
+                                    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                                    border: '1px solid #e5e7eb',
+                                    borderRadius: '8px'
+                                }}
+                            />
+                            <Bar dataKey="count" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
                         </BarChart>
                     </ResponsiveContainer>
+                </div>
+
+                {/* Unacknowledged Feedback */}
+                <div className="glass p-6 mb-6 border border-white/30 rounded-xl shadow">
+                    <h3 className="text-lg font-semibold text-primary-900 mb-4 flex items-center font-poppins">
+                        <Clock className="h-5 w-5 mr-2 text-primary-600" />
+                        Unacknowledged Feedback
+                    </h3>
+                    <div className="max-h-80 overflow-y-auto">
+                        {analytics.unacknowledged.length > 0 ? (
+                            <div className="space-y-3">
+                                {analytics.unacknowledged.map((feedback) => (
+                                    <div key={feedback.id} className="p-4 bg-white/50 rounded-lg border border-white/30">
+                                        <div className="flex justify-between items-start mb-2">
+                                            <h4 className="font-semibold text-primary-900 font-poppins text-sm">
+                                                {feedback.employee_name}
+                                            </h4>
+                                            <span className="text-xs text-primary-500 font-inter">
+                                                {new Date(feedback.created_at).toLocaleDateString()}
+                                            </span>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <div>
+                                                <p className="text-xs font-medium text-primary-700 font-inter">Strengths:</p>
+                                                <p className="text-sm text-primary-900 font-inter">{feedback.strengths}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs font-medium text-primary-700 font-inter">Improvements:</p>
+                                                <p className="text-sm text-primary-900 font-inter">{feedback.improvements}</p>
+                                            </div>
+                                            {feedback.tags.length > 0 && (
+                                                <div className="flex flex-wrap gap-1">
+                                                    {feedback.tags.map((tag, index) => (
+                                                        <span
+                                                            key={index}
+                                                            className="inline-block px-2 py-1 text-xs bg-primary-100 text-primary-700 rounded-full font-inter"
+                                                        >
+                                                            {tag}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="text-center py-8">
+                                <CheckCircle className="h-12 w-12 text-green-400 mx-auto mb-2" />
+                                <p className="text-primary-600 font-inter">All feedback has been acknowledged!</p>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>

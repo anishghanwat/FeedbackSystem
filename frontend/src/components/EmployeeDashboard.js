@@ -1,22 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
-import { MessageSquare, CheckCircle, Clock, TrendingUp, Plus, Tag, Edit, Trash2, Download } from 'lucide-react';
+import { MessageSquare, CheckCircle, Clock, TrendingUp, Plus, Tag, UserCheck, BarChart3 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
-import ReactMarkdown from 'react-markdown';
 import { Link } from 'react-router-dom';
-import { jsPDF } from 'jspdf';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, AreaChart, Area } from 'recharts';
+import FeedbackItem from './FeedbackItem';
 
 function EmployeeDashboard() {
     const [feedback, setFeedback] = useState([]);
     const [stats, setStats] = useState(null);
     const [requests, setRequests] = useState([]);
+    const [analytics, setAnalytics] = useState({
+        trends: [],
+        sentiment: [],
+        topTags: [],
+        ackStatus: null
+    });
     const [loading, setLoading] = useState(true);
-    const [requestLoading, setRequestLoading] = useState(false);
-    const [requestError, setRequestError] = useState('');
     const [editingCommentId, setEditingCommentId] = useState(null);
     const [editingCommentText, setEditingCommentText] = useState('');
+    const [user, setUser] = useState(null);
     useAuth();
+
+    console.log("Top Tags Data:", analytics.topTags);
 
     useEffect(() => {
         fetchDashboardData();
@@ -25,12 +32,23 @@ function EmployeeDashboard() {
 
     const fetchDashboardData = async () => {
         try {
-            const [feedbackResponse, statsResponse] = await Promise.all([
+            const [feedbackResponse, statsResponse, trendsResponse, sentimentResponse, topTagsResponse, ackStatusResponse] = await Promise.all([
                 api.get('/feedback/'),
-                api.get('/feedback/dashboard/stats')
+                api.get('/feedback/dashboard/stats'),
+                api.get('/feedback/analytics/employee/trends'),
+                api.get('/feedback/analytics/employee/sentiment'),
+                api.get('/feedback/analytics/employee/top-tags'),
+                api.get('/feedback/analytics/employee/ack-status')
             ]);
             setFeedback(feedbackResponse.data);
             setStats(statsResponse.data);
+            setAnalytics({
+                trends: trendsResponse.data.trends,
+                sentiment: sentimentResponse.data.trends,
+                topTags: topTagsResponse.data.tags,
+                ackStatus: ackStatusResponse.data.status
+            });
+            setUser(feedbackResponse.data.find(f => f.manager));
         } catch (error) {
             console.error('Error fetching dashboard data:', error);
         } finally {
@@ -47,10 +65,6 @@ function EmployeeDashboard() {
         }
     };
 
-    const handleRequestFeedback = async () => {
-        window.location.href = '/feedback-request/new';
-    };
-
     const hasPendingRequest = requests.some(r => r.status === 'pending');
     const lastRequest = requests.length > 0 ? requests[requests.length - 1] : null;
 
@@ -61,96 +75,6 @@ function EmployeeDashboard() {
         } catch (error) {
             console.error('Error acknowledging feedback:', error);
             toast.error('Failed to acknowledge feedback.');
-        }
-    };
-
-    const handleEditComment = (item) => {
-        setEditingCommentId(item.id);
-        setEditingCommentText(item.comment || '');
-    };
-
-    const handleUpdateComment = async (feedbackId) => {
-        if (!editingCommentText.trim()) {
-            toast.error("Comment cannot be empty.");
-            return;
-        }
-        try {
-            await api.put(`/feedback/${feedbackId}/comment`, { comment: editingCommentText });
-            setEditingCommentId(null);
-            fetchDashboardData();
-            toast.success("Comment updated successfully!");
-        } catch (error) {
-            console.error('Error updating comment:', error);
-            toast.error("Failed to update comment.");
-        }
-    };
-
-    const handleCancelEdit = () => {
-        setEditingCommentId(null);
-        setEditingCommentText('');
-    };
-
-    const handleDeleteComment = async (feedbackId) => {
-        if (window.confirm("Are you sure you want to delete this comment?")) {
-            try {
-                await api.delete(`/feedback/${feedbackId}/comment`);
-                fetchDashboardData();
-                toast.success("Comment deleted successfully!");
-            } catch (error) {
-                console.error('Error deleting comment:', error);
-                toast.error("Failed to delete comment.");
-            }
-        }
-    };
-
-    const downloadFeedbackAsPDF = (feedbackItem) => {
-        const doc = new jsPDF();
-
-        // Title
-        doc.setFontSize(20);
-        doc.text('Feedback Report', 20, 20);
-
-        // Employee info
-        doc.setFontSize(12);
-        doc.text(`Employee: ${feedbackItem.employee.name}`, 20, 40);
-        doc.text(`Manager: ${feedbackItem.manager ? feedbackItem.manager.name : 'Anonymous'}`, 20, 50);
-        doc.text(`Date: ${new Date(feedbackItem.created_at).toLocaleDateString()}`, 20, 60);
-        doc.text(`Sentiment: ${feedbackItem.sentiment}`, 20, 70);
-
-        // Strengths
-        doc.setFontSize(14);
-        doc.text('Strengths:', 20, 90);
-        doc.setFontSize(10);
-        const strengthsLines = doc.splitTextToSize(feedbackItem.strengths, 170);
-        doc.text(strengthsLines, 20, 100);
-
-        // Areas to improve
-        const strengthsHeight = strengthsLines.length * 5;
-        doc.setFontSize(14);
-        doc.text('Areas to Improve:', 20, 110 + strengthsHeight);
-        doc.setFontSize(10);
-        const improvementsLines = doc.splitTextToSize(feedbackItem.improvements, 170);
-        doc.text(improvementsLines, 20, 120 + strengthsHeight);
-
-        // Tags
-        if (feedbackItem.tags && feedbackItem.tags.length > 0) {
-            const improvementsHeight = improvementsLines.length * 5;
-            doc.setFontSize(14);
-            doc.text('Tags:', 20, 130 + strengthsHeight + improvementsHeight);
-            doc.setFontSize(10);
-            const tagsText = feedbackItem.tags.map(tag => tag.name).join(', ');
-            doc.text(tagsText, 20, 140 + strengthsHeight + improvementsHeight);
-        }
-
-        // Save the PDF
-        doc.save(`feedback-${feedbackItem.id}.pdf`);
-    };
-
-    const getSentimentColor = (sentiment) => {
-        switch (sentiment) {
-            case 'positive': return 'text-green-600 bg-green-100';
-            case 'negative': return 'text-red-600 bg-red-100';
-            default: return 'text-gray-600 bg-gray-100';
         }
     };
 
@@ -172,15 +96,18 @@ function EmployeeDashboard() {
         );
     }
 
+    const topTags = analytics.topTags.map(t => ({ ...t, count: Number(t.count) }));
+    console.log('Top Tags Data:', topTags);
+
     return (
         <div className="space-y-6">
-            <h1 className="text-2xl font-bold text-gray-900">My Dashboard</h1>
+            <h1 className="text-2xl font-bold text-primary-900 font-poppins tracking-tight">My Dashboard</h1>
 
             {/* Feedback Request Section */}
-            <div className="bg-white shadow rounded-lg p-4 flex items-center space-x-4 mb-2">
+            <div className="glass shadow rounded-xl p-4 flex items-center space-x-4 mb-2 border border-white/30">
                 <Link
                     to="/feedback-request/new"
-                    className="inline-flex items-center px-4 py-2 border border-primary-300 text-sm font-medium rounded-md text-primary-700 bg-primary-100 hover:bg-primary-200 disabled:opacity-50"
+                    className="inline-flex items-center px-4 py-2 border border-primary-300 text-sm font-medium rounded-lg text-primary-700 bg-primary-100/80 hover:bg-primary-200/80 disabled:opacity-50 font-inter transition-colors duration-200"
                     disabled={hasPendingRequest}
                 >
                     <Plus className="h-4 w-4 mr-2" />
@@ -188,19 +115,19 @@ function EmployeeDashboard() {
                 </Link>
                 <Link
                     to="/feedback/new"
-                    className="inline-flex items-center px-4 py-2 border border-green-300 text-sm font-medium rounded-md text-green-700 bg-green-100 hover:bg-green-200 ml-2"
+                    className="inline-flex items-center px-4 py-2 border border-green-300 text-sm font-medium rounded-lg text-green-700 bg-green-100/80 hover:bg-green-200/80 ml-2 font-inter transition-colors duration-200"
                 >
                     <Plus className="h-4 w-4 mr-2" />
                     Send Peer Feedback
                 </Link>
                 {hasPendingRequest && (
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium text-yellow-800 bg-yellow-100">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium text-yellow-800 bg-yellow-100/80 font-inter">
                         <Clock className="h-3 w-3 mr-1" />
                         Pending Request
                     </span>
                 )}
                 {lastRequest && lastRequest.status === 'completed' && (
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium text-green-800 bg-green-100">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium text-green-800 bg-green-100/80 font-inter">
                         <CheckCircle className="h-3 w-3 mr-1" />
                         Last request completed
                     </span>
@@ -209,18 +136,18 @@ function EmployeeDashboard() {
 
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div className="bg-white overflow-hidden shadow rounded-lg">
+                <div className="glass overflow-hidden shadow rounded-xl border border-white/30">
                     <div className="p-5">
                         <div className="flex items-center">
                             <div className="flex-shrink-0">
-                                <MessageSquare className="h-6 w-6 text-gray-400" />
+                                <MessageSquare className="h-6 w-6 text-primary-400" />
                             </div>
                             <div className="ml-5 w-0 flex-1">
                                 <dl>
-                                    <dt className="text-sm font-medium text-gray-500 truncate">
+                                    <dt className="text-sm font-medium text-primary-600 truncate font-inter">
                                         Total Feedback
                                     </dt>
-                                    <dd className="text-lg font-medium text-gray-900">
+                                    <dd className="text-lg font-semibold text-primary-900 font-poppins">
                                         {stats?.total_feedback || 0}
                                     </dd>
                                 </dl>
@@ -229,18 +156,18 @@ function EmployeeDashboard() {
                     </div>
                 </div>
 
-                <div className="bg-white overflow-hidden shadow rounded-lg">
+                <div className="glass overflow-hidden shadow rounded-xl border border-white/30">
                     <div className="p-5">
                         <div className="flex items-center">
                             <div className="flex-shrink-0">
-                                <CheckCircle className="h-6 w-6 text-gray-400" />
+                                <CheckCircle className="h-6 w-6 text-primary-400" />
                             </div>
                             <div className="ml-5 w-0 flex-1">
                                 <dl>
-                                    <dt className="text-sm font-medium text-gray-500 truncate">
+                                    <dt className="text-sm font-medium text-primary-600 truncate font-inter">
                                         Acknowledged
                                     </dt>
-                                    <dd className="text-lg font-medium text-gray-900">
+                                    <dd className="text-lg font-semibold text-primary-900 font-poppins">
                                         {stats?.acknowledged_feedback || 0}
                                     </dd>
                                 </dl>
@@ -249,18 +176,18 @@ function EmployeeDashboard() {
                     </div>
                 </div>
 
-                <div className="bg-white overflow-hidden shadow rounded-lg">
+                <div className="glass overflow-hidden shadow rounded-xl border border-white/30">
                     <div className="p-5">
                         <div className="flex items-center">
                             <div className="flex-shrink-0">
-                                <Clock className="h-6 w-6 text-gray-400" />
+                                <Clock className="h-6 w-6 text-primary-400" />
                             </div>
                             <div className="ml-5 w-0 flex-1">
                                 <dl>
-                                    <dt className="text-sm font-medium text-gray-500 truncate">
+                                    <dt className="text-sm font-medium text-primary-600 truncate font-inter">
                                         Pending
                                     </dt>
-                                    <dd className="text-lg font-medium text-gray-900">
+                                    <dd className="text-lg font-semibold text-primary-900 font-poppins">
                                         {(stats?.total_feedback || 0) - (stats?.acknowledged_feedback || 0)}
                                     </dd>
                                 </dl>
@@ -269,18 +196,18 @@ function EmployeeDashboard() {
                     </div>
                 </div>
 
-                <div className="bg-white overflow-hidden shadow rounded-lg">
+                <div className="glass overflow-hidden shadow rounded-xl border border-white/30">
                     <div className="p-5">
                         <div className="flex items-center">
                             <div className="flex-shrink-0">
-                                <TrendingUp className="h-6 w-6 text-gray-400" />
+                                <TrendingUp className="h-6 w-6 text-primary-400" />
                             </div>
                             <div className="ml-5 w-0 flex-1">
                                 <dl>
-                                    <dt className="text-sm font-medium text-gray-500 truncate">
+                                    <dt className="text-sm font-medium text-primary-600 truncate font-inter">
                                         Positive Rate
                                     </dt>
-                                    <dd className="text-lg font-medium text-gray-900">
+                                    <dd className="text-lg font-semibold text-primary-900 font-poppins">
                                         {stats?.total_feedback ? Math.round((stats.positive_feedback / stats.total_feedback) * 100) : 0}%
                                     </dd>
                                 </dl>
@@ -290,144 +217,217 @@ function EmployeeDashboard() {
                 </div>
             </div>
 
-            {/* Feedback Timeline */}
-            <div className="bg-white shadow rounded-lg">
-                <div className="px-6 py-4 border-b border-gray-200">
-                    <h3 className="text-lg font-medium text-gray-900">Recent Feedback</h3>
+            {/* Analytics Charts */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Feedback Trends Over Time */}
+                <div className="glass p-6 mb-6 border border-white/30 rounded-xl shadow">
+                    <h3 className="text-lg font-semibold text-primary-900 mb-4 flex items-center font-poppins">
+                        <TrendingUp className="h-5 w-5 mr-2 text-primary-600" />
+                        Feedback Received Over Time
+                    </h3>
+                    <ResponsiveContainer width="100%" height={300}>
+                        <AreaChart data={analytics.trends}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                            <XAxis
+                                dataKey="date"
+                                tick={{ fontSize: 12, fill: '#6b7280' }}
+                                tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                            />
+                            <YAxis tick={{ fontSize: 12, fill: '#6b7280' }} />
+                            <Tooltip
+                                contentStyle={{
+                                    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                                    border: '1px solid #e5e7eb',
+                                    borderRadius: '8px'
+                                }}
+                                labelFormatter={(value) => new Date(value).toLocaleDateString()}
+                            />
+                            <Area
+                                type="monotone"
+                                dataKey="count"
+                                stroke="#3b82f6"
+                                fill="#3b82f6"
+                                fillOpacity={0.3}
+                                strokeWidth={2}
+                            />
+                        </AreaChart>
+                    </ResponsiveContainer>
                 </div>
 
+                {/* Sentiment Trends Over Time */}
+                <div className="glass p-6 mb-6 border border-white/30 rounded-xl shadow">
+                    <h3 className="text-lg font-semibold text-primary-900 mb-4 flex items-center font-poppins">
+                        <BarChart3 className="h-5 w-5 mr-2 text-primary-600" />
+                        Sentiment Trends Over Time
+                    </h3>
+                    <ResponsiveContainer width="100%" height={300}>
+                        <LineChart data={analytics.sentiment}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                            <XAxis
+                                dataKey="date"
+                                tick={{ fontSize: 12, fill: '#6b7280' }}
+                                tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                            />
+                            <YAxis tick={{ fontSize: 12, fill: '#6b7280' }} />
+                            <Tooltip
+                                contentStyle={{
+                                    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                                    border: '1px solid #e5e7eb',
+                                    borderRadius: '8px'
+                                }}
+                                labelFormatter={(value) => new Date(value).toLocaleDateString()}
+                            />
+                            <Line
+                                type="monotone"
+                                dataKey="positive"
+                                stroke="#10b981"
+                                strokeWidth={2}
+                                dot={{ fill: '#10b981', strokeWidth: 2, r: 4 }}
+                                name="Positive"
+                            />
+                            <Line
+                                type="monotone"
+                                dataKey="neutral"
+                                stroke="#6b7280"
+                                strokeWidth={2}
+                                dot={{ fill: '#6b7280', strokeWidth: 2, r: 4 }}
+                                name="Neutral"
+                            />
+                            <Line
+                                type="monotone"
+                                dataKey="negative"
+                                stroke="#ef4444"
+                                strokeWidth={2}
+                                dot={{ fill: '#ef4444', strokeWidth: 2, r: 4 }}
+                                name="Negative"
+                            />
+                        </LineChart>
+                    </ResponsiveContainer>
+                </div>
+
+                {/* Top Feedback Tags */}
+                <div className="glass p-6 mb-6 border border-white/30 rounded-xl shadow">
+                    <h3 className="text-lg font-semibold text-primary-900 mb-4 flex items-center font-poppins">
+                        <Tag className="h-5 w-5 mr-2 text-primary-600" />
+                        Top Feedback Tags
+                    </h3>
+                    <div style={{ width: 500, height: 300 }}>
+                        <BarChart data={topTags} width={500} height={300}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                            <XAxis dataKey="tag" tick={{ fontSize: 12, fill: '#6b7280' }} />
+                            <YAxis tick={{ fontSize: 12, fill: '#6b7280' }} />
+                            <Tooltip
+                                contentStyle={{
+                                    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                                    border: '1px solid #e5e7eb',
+                                    borderRadius: '8px'
+                                }}
+                            />
+                            <Bar dataKey="count" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                    </div>
+                </div>
+
+                {/* Acknowledgment Status */}
+                <div className="glass p-6 mb-6 border border-white/30 rounded-xl shadow">
+                    <h3 className="text-lg font-semibold text-primary-900 mb-4 flex items-center font-poppins">
+                        <UserCheck className="h-5 w-5 mr-2 text-primary-600" />
+                        Acknowledgment Status
+                    </h3>
+                    <div className="space-y-4">
+                        {/* Acknowledgment Rate Chart */}
+                        <div className="mb-4">
+                            <div className="flex justify-between items-center mb-2">
+                                <span className="text-sm font-medium text-primary-700 font-inter">Acknowledgment Rate</span>
+                                <span className="text-lg font-semibold text-primary-900 font-poppins">
+                                    {analytics.ackStatus ? Math.round(analytics.ackStatus.ack_rate) : 0}%
+                                </span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-2">
+                                <div
+                                    className="bg-primary-600 h-2 rounded-full transition-all duration-300"
+                                    style={{ width: `${analytics.ackStatus ? analytics.ackStatus.ack_rate : 0}%` }}
+                                ></div>
+                            </div>
+                        </div>
+
+                        {/* Recent Unacknowledged Feedback */}
+                        <div>
+                            <h4 className="text-sm font-medium text-primary-700 mb-3 font-inter">Recent Unacknowledged Feedback</h4>
+                            <div className="max-h-48 overflow-y-auto space-y-2">
+                                {analytics.ackStatus && analytics.ackStatus.recent_unacknowledged.length > 0 ? (
+                                    analytics.ackStatus.recent_unacknowledged.map((feedback) => (
+                                        <div key={feedback.id} className="p-3 bg-white/50 rounded-lg border border-white/30">
+                                            <div className="flex justify-between items-start mb-1">
+                                                <h5 className="font-semibold text-primary-900 font-poppins text-sm">
+                                                    {feedback.manager_name}
+                                                </h5>
+                                                <span className="text-xs text-primary-500 font-inter">
+                                                    {new Date(feedback.created_at).toLocaleDateString()}
+                                                </span>
+                                            </div>
+                                            <p className="text-xs text-primary-700 font-inter line-clamp-2">
+                                                {feedback.strengths.substring(0, 100)}...
+                                            </p>
+                                            {feedback.tags.length > 0 && (
+                                                <div className="flex flex-wrap gap-1 mt-1">
+                                                    {feedback.tags.slice(0, 2).map((tag, index) => (
+                                                        <span
+                                                            key={index}
+                                                            className="inline-block px-1 py-0.5 text-xs bg-primary-100 text-primary-700 rounded-full font-inter"
+                                                        >
+                                                            {tag}
+                                                        </span>
+                                                    ))}
+                                                    {feedback.tags.length > 2 && (
+                                                        <span className="text-xs text-primary-500 font-inter">
+                                                            +{feedback.tags.length - 2} more
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div className="text-center py-4">
+                                        <CheckCircle className="h-8 w-8 text-green-400 mx-auto mb-2" />
+                                        <p className="text-primary-600 font-inter text-sm">All feedback acknowledged!</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Feedback Timeline */}
+            <div className="glass shadow rounded-xl border border-white/30">
+                <div className="px-6 py-4 border-b border-white/30">
+                    <h3 className="text-lg font-semibold text-primary-900 font-poppins">Recent Feedback</h3>
+                </div>
                 {feedback.length === 0 ? (
                     <div className="px-6 py-12 text-center">
-                        <MessageSquare className="mx-auto h-12 w-12 text-gray-400" />
-                        <h3 className="mt-2 text-sm font-medium text-gray-900">No feedback yet</h3>
-                        <p className="mt-1 text-sm text-gray-500">
+                        <MessageSquare className="mx-auto h-12 w-12 text-primary-400" />
+                        <h3 className="mt-2 text-sm font-semibold text-primary-900 font-poppins">No feedback yet</h3>
+                        <p className="mt-1 text-sm text-primary-600 font-inter">
                             You haven't received any feedback from your manager yet.
                         </p>
                     </div>
                 ) : (
                     <div className="space-y-4">
                         {feedback.slice(0, 3).map((item) => (
-                            <div key={item.id} className="bg-white shadow rounded-lg p-4">
-                                <div className="flex items-start justify-between">
-                                    <div className="flex-1">
-                                        <div className="flex items-center space-x-3 mb-2">
-                                            <h4 className="font-medium text-gray-800">
-                                                Feedback from {item.manager ? item.manager.name : "Anonymous"}
-                                            </h4>
-                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getSentimentColor(item.sentiment)}`}>
-                                                {item.sentiment}
-                                            </span>
-                                            {item.acknowledged && (
-                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium text-green-800 bg-green-100">
-                                                    <CheckCircle className="h-3 w-3 mr-1" />
-                                                    Acknowledged
-                                                </span>
-                                            )}
-                                        </div>
-
-                                        {item.tags && item.tags.length > 0 && (
-                                            <div className="flex items-center flex-wrap gap-2 mb-3">
-                                                <Tag className="h-4 w-4 text-gray-400" />
-                                                {item.tags.map(tag => (
-                                                    <span key={tag.id} className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                                        {tag.name}
-                                                    </span>
-                                                ))}
-                                            </div>
-                                        )}
-
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-4">
-                                            <div>
-                                                <h5 className="text-sm font-medium text-gray-700 mb-2">Strengths</h5>
-                                                <div className="bg-green-50 p-3 rounded-md">
-                                                    {(() => {
-                                                        const val = item.strengths;
-                                                        if (typeof val !== 'string' && typeof val !== 'number') {
-                                                            console.warn('Unexpected type for strengths:', val);
-                                                            return null;
-                                                        }
-                                                        return <ReactMarkdown>{String(val)}</ReactMarkdown>;
-                                                    })()}
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <h5 className="text-sm font-medium text-gray-700 mb-2">Areas to Improve</h5>
-                                                <div className="bg-yellow-50 p-3 rounded-md">
-                                                    {(() => {
-                                                        const val = item.improvements;
-                                                        if (typeof val !== 'string' && typeof val !== 'number') {
-                                                            console.warn('Unexpected type for improvements:', val);
-                                                            return null;
-                                                        }
-                                                        return <ReactMarkdown>{String(val)}</ReactMarkdown>;
-                                                    })()}
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Display comment if it exists */}
-                                        {item.comment && editingCommentId !== item.id && (
-                                            <div className="mt-4">
-                                                <div className="flex justify-between items-center">
-                                                    <h5 className="text-sm font-medium text-gray-700 mb-2">Your Comment</h5>
-                                                    <div className="flex space-x-2">
-                                                        <button onClick={() => handleEditComment(item)} className="text-xs text-blue-500 hover:text-blue-700">
-                                                            <Edit className="h-4 w-4" />
-                                                        </button>
-                                                        <button onClick={() => handleDeleteComment(item.id)} className="text-xs text-red-500 hover:text-red-700">
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                                <div className="bg-blue-50 p-3 rounded-md">
-                                                    {(() => {
-                                                        const val = item.comment;
-                                                        if (typeof val !== 'string' && typeof val !== 'number') {
-                                                            console.warn('Unexpected type for comment:', val);
-                                                            return null;
-                                                        }
-                                                        return <ReactMarkdown>{String(val)}</ReactMarkdown>;
-                                                    })()}
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {editingCommentId === item.id && (
-                                            <div className="mt-4">
-                                                <h5 className="text-sm font-medium text-gray-700 mb-2">Edit Your Comment</h5>
-                                                <textarea
-                                                    value={editingCommentText}
-                                                    onChange={(e) => setEditingCommentText(e.target.value)}
-                                                    className="w-full p-2 border rounded-md"
-                                                    rows="3"
-                                                />
-                                                <div className="flex justify-end space-x-2 mt-2">
-                                                    <button onClick={() => setEditingCommentId(null)} className="px-3 py-1 text-sm rounded-md bg-gray-200 hover:bg-gray-300">
-                                                        Cancel
-                                                    </button>
-                                                    <button onClick={() => handleUpdateComment(item.id)} className="px-3 py-1 text-sm rounded-md text-white bg-blue-600 hover:bg-blue-700">
-                                                        Save
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        <p className="text-xs text-gray-500 mt-3">
-                                            Received on {formatDate(item.created_at)}
-                                        </p>
-                                    </div>
-
-                                    {!item.acknowledged && (
-                                        <button
-                                            onClick={() => handleAcknowledge(item.id)}
-                                            className="ml-4 inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700"
-                                        >
-                                            <CheckCircle className="h-3 w-3 mr-1" />
-                                            Acknowledge
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
+                            <FeedbackItem
+                                key={item.id}
+                                item={item}
+                                user={user}
+                                editingCommentId={editingCommentId}
+                                setEditingCommentId={setEditingCommentId}
+                                comment={editingCommentText}
+                                setComment={setEditingCommentText}
+                                handleCommentSubmit={handleAcknowledge}
+                                handleAcknowledge={handleAcknowledge}
+                                formatDate={formatDate}
+                            />
                         ))}
                     </div>
                 )}

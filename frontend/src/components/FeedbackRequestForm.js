@@ -58,17 +58,17 @@ function FeedbackRequestForm() {
             <div className="mb-6">
                 <button
                     onClick={() => navigate('/dashboard')}
-                    className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700"
+                    className="inline-flex items-center text-sm text-primary-600 hover:text-primary-700 font-medium font-inter"
                 >
                     <ArrowLeft className="h-4 w-4 mr-1" />
                     Back to Dashboard
                 </button>
             </div>
 
-            <div className="bg-white shadow rounded-lg">
-                <div className="px-6 py-4 border-b border-gray-200">
-                    <h2 className="text-lg font-medium text-gray-900">Request Feedback</h2>
-                    <p className="text-sm text-gray-600 mt-1">
+            <div className="glass shadow rounded-xl border border-white/30">
+                <div className="px-6 py-4 border-b border-white/30">
+                    <h2 className="text-lg font-semibold text-primary-900 font-poppins">Request Feedback</h2>
+                    <p className="text-sm text-primary-600 mt-1 font-inter">
                         Send a feedback request to your manager
                     </p>
                 </div>
@@ -76,12 +76,12 @@ function FeedbackRequestForm() {
                 <form onSubmit={handleSubmit} className="p-6 space-y-6">
                     {error && (
                         <div className="bg-red-50 border border-red-200 rounded-md p-4">
-                            <p className="text-sm text-red-600">{error}</p>
+                            <p className="text-sm text-red-600 font-inter">{error}</p>
                         </div>
                     )}
 
                     <div>
-                        <label htmlFor="manager_id" className="block text-sm font-medium text-gray-700 mb-2">
+                        <label htmlFor="manager_id" className="block text-sm font-medium text-primary-700 mb-2 font-inter">
                             Select Manager
                         </label>
                         <select
@@ -89,7 +89,7 @@ function FeedbackRequestForm() {
                             value={selectedManagerId}
                             onChange={(e) => setSelectedManagerId(e.target.value)}
                             required
-                            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 font-inter"
                         >
                             <option value="">Choose a manager...</option>
                             {managers.map((manager) => (
@@ -100,8 +100,8 @@ function FeedbackRequestForm() {
                         </select>
                     </div>
 
-                    <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
-                        <p className="text-sm text-blue-700">
+                    <div className="glass p-4 rounded-md border border-white/30">
+                        <p className="text-sm text-primary-700 font-inter">
                             <strong>Note:</strong> Your manager will be notified of this request and can provide feedback when they're ready.
                         </p>
                     </div>
@@ -110,14 +110,14 @@ function FeedbackRequestForm() {
                         <button
                             type="button"
                             onClick={() => navigate('/dashboard')}
-                            className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                            className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 font-inter"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
                             disabled={loading || !selectedManagerId}
-                            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
+                            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 font-inter"
                         >
                             <Send className="h-4 w-4 mr-2" />
                             {loading ? 'Sending...' : 'Send Request'}

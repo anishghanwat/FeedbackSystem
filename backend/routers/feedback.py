@@ -11,7 +11,8 @@ from services import (
     get_dashboard_stats, delete_feedback, create_feedback_request, 
     get_feedback_requests_for_manager, get_feedback_requests_for_employee, 
     complete_feedback_request, add_feedback_comment, get_all_tags,
-    update_feedback_comment, delete_feedback_comment
+    update_feedback_comment, delete_feedback_comment, get_feedback_trends, get_ack_rate_trends, get_top_tags, get_unacknowledged_feedback,
+    get_employee_feedback_trends, get_employee_sentiment_trends, get_employee_top_tags, get_employee_ack_status
 )
 from .auth import get_current_active_user
 from models import Feedback, User
@@ -293,4 +294,90 @@ def list_tags(db: Session = Depends(get_db)):
     """
     Get a list of all available tags.
     """
-    return get_all_tags(db) 
+    return get_all_tags(db)
+
+@router.get("/analytics/trends", response_model=schemas.FeedbackTrendList)
+def feedback_trends(
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(get_current_active_user),
+    days: int = 30
+):
+    if current_user.role != "manager":
+        raise HTTPException(status_code=403, detail="Only managers can view this analytic.")
+    data = get_feedback_trends(current_user.id, db, days)
+    return {"trends": data}
+
+@router.get("/analytics/ack_rate", response_model=schemas.AckRateTrendList)
+def ack_rate_trends(
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(get_current_active_user),
+    days: int = 30
+):
+    if current_user.role != "manager":
+        raise HTTPException(status_code=403, detail="Only managers can view this analytic.")
+    data = get_ack_rate_trends(current_user.id, db, days)
+    return {"trends": data}
+
+@router.get("/analytics/top-tags", response_model=schemas.TopTagList)
+def top_tags(
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(get_current_active_user),
+    top_n: int = 10
+):
+    if current_user.role != "manager":
+        raise HTTPException(status_code=403, detail="Only managers can view this analytic.")
+    data = get_top_tags(current_user.id, db, top_n)
+    return {"tags": data}
+
+@router.get("/analytics/unacknowledged", response_model=schemas.UnacknowledgedFeedbackList)
+def unacknowledged_feedback(
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(get_current_active_user)
+):
+    if current_user.role != "manager":
+        raise HTTPException(status_code=403, detail="Only managers can view this analytic.")
+    data = get_unacknowledged_feedback(current_user.id, db)
+    return {"feedback": data}
+
+@router.get("/analytics/employee/trends", response_model=schemas.FeedbackTrendList)
+def employee_feedback_trends(
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(get_current_active_user),
+    days: int = 30
+):
+    if current_user.role != "employee":
+        raise HTTPException(status_code=403, detail="Only employees can view this analytic.")
+    data = get_employee_feedback_trends(current_user.id, db, days)
+    return {"trends": data}
+
+@router.get("/analytics/employee/sentiment", response_model=schemas.EmployeeSentimentTrendList)
+def employee_sentiment_trends(
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(get_current_active_user),
+    days: int = 30
+):
+    if current_user.role != "employee":
+        raise HTTPException(status_code=403, detail="Only employees can view this analytic.")
+    data = get_employee_sentiment_trends(current_user.id, db, days)
+    return {"trends": data}
+
+@router.get("/analytics/employee/top-tags", response_model=schemas.TopTagList)
+def employee_top_tags(
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(get_current_active_user),
+    top_n: int = 10
+):
+    if current_user.role != "employee":
+        raise HTTPException(status_code=403, detail="Only employees can view this analytic.")
+    data = get_employee_top_tags(current_user.id, db, top_n)
+    return {"tags": data}
+
+@router.get("/analytics/employee/ack-status", response_model=schemas.EmployeeAckStatusResponse)
+def employee_ack_status(
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(get_current_active_user)
+):
+    if current_user.role != "employee":
+        raise HTTPException(status_code=403, detail="Only employees can view this analytic.")
+    data = get_employee_ack_status(current_user.id, db)
+    return {"status": data} 

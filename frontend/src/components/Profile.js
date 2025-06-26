@@ -124,7 +124,7 @@ function Profile() {
             <div className="mb-6">
                 <button
                     onClick={() => navigate('/')}
-                    className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700"
+                    className="inline-flex items-center text-sm text-primary-600 hover:text-primary-700 font-medium font-inter"
                 >
                     <ArrowLeft className="h-4 w-4 mr-1" />
                     Back to Dashboard
@@ -134,7 +134,7 @@ function Profile() {
             {/* Delete Account Confirmation Modal */}
             {showDeleteModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-                    <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6 relative animate-fade-in">
+                    <div className="glass rounded-xl shadow-lg max-w-md w-full p-6 relative animate-fade-in border border-white/30">
                         <button
                             className="absolute top-3 right-3 text-gray-400 hover:text-gray-600"
                             onClick={closeDeleteModal}
@@ -144,24 +144,24 @@ function Profile() {
                         </button>
                         <div className="flex flex-col items-center">
                             <Trash2 className="h-10 w-10 text-red-500 mb-2" />
-                            <h2 className="text-lg font-semibold text-gray-900 mb-2">Delete Account?</h2>
-                            <p className="text-gray-600 text-center mb-4">Are you sure you want to delete your account? This action cannot be undone and all your feedback will be removed.</p>
+                            <h2 className="text-lg font-semibold text-primary-900 mb-2 font-poppins">Delete Account?</h2>
+                            <p className="text-gray-600 text-center mb-4 font-inter">Are you sure you want to delete your account? This action cannot be undone and all your feedback will be removed.</p>
                             {deleteError && (
-                                <div className="bg-red-50 border border-red-200 rounded-md p-2 mb-2 w-full text-center text-red-600 text-sm">
+                                <div className="bg-red-50 border border-red-200 rounded-md p-2 mb-2 w-full text-center text-red-600 text-sm font-inter">
                                     {deleteError}
                                 </div>
                             )}
                             <div className="flex space-x-3 mt-2">
                                 <button
                                     onClick={closeDeleteModal}
-                                    className="px-4 py-2 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 font-medium"
+                                    className="px-4 py-2 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 font-medium font-inter"
                                     disabled={deleteLoading}
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     onClick={handleDeleteAccount}
-                                    className="px-4 py-2 rounded-md border border-transparent bg-red-600 text-white hover:bg-red-700 font-medium disabled:opacity-50"
+                                    className="px-4 py-2 rounded-md border border-transparent bg-red-600 text-white hover:bg-red-700 font-medium disabled:opacity-50 font-inter"
                                     disabled={deleteLoading}
                                 >
                                     {deleteLoading ? 'Deleting...' : 'Delete'}
@@ -172,15 +172,15 @@ function Profile() {
                 </div>
             )}
 
-            <div className="bg-white shadow rounded-lg">
-                <div className="px-6 py-4 border-b border-gray-200">
-                    <h2 className="text-lg font-medium text-gray-900">Profile Settings</h2>
+            <div className="glass shadow rounded-xl border border-white/30">
+                <div className="px-6 py-4 border-b border-white/30">
+                    <h2 className="text-lg font-semibold text-primary-900 font-poppins">Profile Settings</h2>
                 </div>
 
                 <form onSubmit={handleSubmit} className="p-6 space-y-6">
                     {error && (
                         <div className="bg-red-50 border border-red-200 rounded-md p-4">
-                            <div className="flex items-center space-x-2 text-red-600">
+                            <div className="flex items-center space-x-2 text-red-600 font-inter">
                                 <AlertCircle className="h-4 w-4" />
                                 <span>{error}</span>
                             </div>
@@ -189,7 +189,7 @@ function Profile() {
 
                     {success && (
                         <div className="bg-green-50 border border-green-200 rounded-md p-4">
-                            <div className="flex items-center space-x-2 text-green-600">
+                            <div className="flex items-center space-x-2 text-green-600 font-inter">
                                 <CheckCircle className="h-4 w-4" />
                                 <span>{success}</span>
                             </div>
@@ -197,12 +197,12 @@ function Profile() {
                     )}
 
                     <div>
-                        <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
+                        <label htmlFor="name" className="block text-sm font-medium text-primary-700 mb-2 font-inter">
                             Full Name
                         </label>
                         <div className="relative">
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <User className="h-5 w-5 text-gray-400" />
+                                <User className="h-5 w-5 text-primary-400" />
                             </div>
                             <input
                                 type="text"
@@ -210,7 +210,7 @@ function Profile() {
                                 name="name"
                                 required
                                 autoComplete="name"
-                                className="block w-full pl-10 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                                className="block w-full pl-10 px-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 font-inter"
                                 value={formData.name}
                                 onChange={handleChange}
                             />
@@ -218,12 +218,12 @@ function Profile() {
                     </div>
 
                     <div>
-                        <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                        <label htmlFor="email" className="block text-sm font-medium text-primary-700 mb-2 font-inter">
                             Email
                         </label>
                         <div className="relative">
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <Mail className="h-5 w-5 text-gray-400" />
+                                <Mail className="h-5 w-5 text-primary-400" />
                             </div>
                             <input
                                 type="email"
@@ -231,7 +231,7 @@ function Profile() {
                                 name="email"
                                 required
                                 autoComplete="email"
-                                className="block w-full pl-10 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                                className="block w-full pl-10 px-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 font-inter"
                                 value={formData.email}
                                 onChange={handleChange}
                             />
@@ -239,7 +239,7 @@ function Profile() {
                     </div>
 
                     <div>
-                        <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
+                        <label htmlFor="username" className="block text-sm font-medium text-primary-700 mb-2 font-inter">
                             Username
                         </label>
                         <input
@@ -247,13 +247,13 @@ function Profile() {
                             id="username"
                             value={user?.username || ''}
                             disabled
-                            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50 text-gray-500"
+                            className="block w-full px-3 py-3 border border-gray-300 rounded-lg shadow-sm bg-gray-50 text-gray-500 font-inter"
                         />
-                        <p className="mt-1 text-sm text-gray-500">Username cannot be changed</p>
+                        <p className="mt-1 text-sm text-primary-500 font-inter">Username cannot be changed</p>
                     </div>
 
                     <div>
-                        <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-2">
+                        <label htmlFor="role" className="block text-sm font-medium text-primary-700 mb-2 font-inter">
                             Role
                         </label>
                         <input
@@ -261,17 +261,17 @@ function Profile() {
                             id="role"
                             value={formData.role}
                             disabled
-                            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50 text-gray-500"
+                            className="block w-full px-3 py-3 border border-gray-300 rounded-lg shadow-sm bg-gray-50 text-gray-500 font-inter"
                             onChange={handleChange}
                         />
-                        <p className="mt-1 text-sm text-gray-500">Role cannot be changed</p>
+                        <p className="mt-1 text-sm text-primary-500 font-inter">Role cannot be changed</p>
                     </div>
 
-                    <div className="border-t pt-6">
-                        <h3 className="text-lg font-medium text-gray-900 mb-4">Change Password</h3>
+                    <div className="border-t border-white/30 pt-6">
+                        <h3 className="text-lg font-semibold text-primary-900 mb-4 font-poppins">Change Password</h3>
                         <div className="space-y-4">
                             <div>
-                                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+                                <label htmlFor="password" className="block text-sm font-medium text-primary-700 mb-2 font-inter">
                                     New Password
                                 </label>
                                 <div className="relative">
@@ -280,7 +280,7 @@ function Profile() {
                                         id="password"
                                         name="password"
                                         autoComplete="new-password"
-                                        className="block w-full px-3 py-2 pr-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                                        className="block w-full px-3 py-3 pr-10 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 font-inter"
                                         placeholder="Leave blank to keep current password"
                                         value={formData.password}
                                         onChange={handleChange}
@@ -291,19 +291,19 @@ function Profile() {
                                         onClick={() => setShowPassword(!showPassword)}
                                     >
                                         {showPassword ? (
-                                            <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                                            <EyeOff className="h-5 w-5 text-primary-400 hover:text-primary-600" />
                                         ) : (
-                                            <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                                            <Eye className="h-5 w-5 text-primary-400 hover:text-primary-600" />
                                         )}
                                     </button>
                                 </div>
-                                <p className="mt-1 text-xs text-gray-500">
+                                <p className="mt-1 text-xs text-primary-500 font-inter">
                                     At least 6 characters
                                 </p>
                             </div>
 
                             <div>
-                                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
+                                <label htmlFor="confirmPassword" className="block text-sm font-medium text-primary-700 mb-2 font-inter">
                                     Confirm New Password
                                 </label>
                                 <div className="relative">
@@ -312,7 +312,7 @@ function Profile() {
                                         id="confirmPassword"
                                         name="confirmPassword"
                                         autoComplete="new-password"
-                                        className="block w-full px-3 py-2 pr-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                                        className="block w-full px-3 py-3 pr-10 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 font-inter"
                                         placeholder="Confirm new password"
                                         value={formData.confirmPassword}
                                         onChange={handleChange}
@@ -323,9 +323,9 @@ function Profile() {
                                         onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                                     >
                                         {showConfirmPassword ? (
-                                            <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                                            <EyeOff className="h-5 w-5 text-primary-400 hover:text-primary-600" />
                                         ) : (
-                                            <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                                            <Eye className="h-5 w-5 text-primary-400 hover:text-primary-600" />
                                         )}
                                     </button>
                                 </div>
@@ -337,14 +337,14 @@ function Profile() {
                         <button
                             type="button"
                             onClick={() => navigate('/')}
-                            className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                            className="px-4 py-2 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 font-inter"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
                             disabled={loading}
-                            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
+                            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 font-inter"
                         >
                             <Save className="h-4 w-4 mr-2" />
                             {loading ? 'Saving...' : 'Save Changes'}
@@ -352,15 +352,15 @@ function Profile() {
                     </div>
                 </form>
 
-                <div className="px-6 py-4 border-t border-gray-200">
+                <div className="px-6 py-4 border-t border-white/30">
                     <div className="flex justify-between items-center">
                         <div>
-                            <h3 className="text-lg font-medium text-gray-900">Danger Zone</h3>
-                            <p className="text-sm text-gray-500">Permanently delete your account</p>
+                            <h3 className="text-lg font-semibold text-red-700 font-poppins">Danger Zone</h3>
+                            <p className="text-sm text-red-500 font-inter">Permanently delete your account</p>
                         </div>
                         <button
                             onClick={openDeleteModal}
-                            className="px-4 py-2 border border-red-300 rounded-md shadow-sm text-sm font-medium text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                            className="px-4 py-2 border border-red-400 rounded-lg shadow-sm text-sm font-medium text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 font-inter"
                         >
                             Delete Account
                         </button>

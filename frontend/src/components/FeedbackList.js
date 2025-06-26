@@ -181,10 +181,10 @@ function FeedbackList() {
                     <button
                         key={tab.key}
                         onClick={() => setActiveTab(tab.key)}
-                        className={`px-4 py-2 rounded-full flex items-center space-x-2 transition-colors duration-150
-                            ${activeTab === tab.key ? 'bg-white text-black font-bold shadow' : 'bg-gray-800 text-white'}`}
+                        className={`px-4 py-2 rounded-full flex items-center space-x-2 transition-colors duration-150 font-semibold backdrop-blur-md glass shadow border border-white/30
+                            ${activeTab === tab.key ? 'bg-white/70 text-primary-700 shadow-lg' : 'bg-white/30 text-gray-700 hover:bg-white/50'}`}
                     >
-                        {activeTab === tab.key && <span className="h-2 w-2 bg-blue-500 rounded-full mr-2"></span>}
+                        {activeTab === tab.key && <span className="h-2 w-2 bg-primary-500 rounded-full mr-2"></span>}
                         <span>{tab.label}</span>
                         <span className="ml-1">{tab.count}</span>
                     </button>
@@ -192,12 +192,12 @@ function FeedbackList() {
             </div>
             <div className="space-y-6">
                 <div className="flex justify-between items-center">
-                    <h1 className="text-2xl font-bold text-gray-900">
+                    <h1 className="text-2xl font-bold text-primary-900 tracking-tight font-poppins">
                         {user?.role === 'manager' ? 'Feedback Given' : 'My Feedback'}
                     </h1>
                 </div>
-                <div className="bg-white p-4 shadow rounded-lg">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Filter by Tags:</label>
+                <div className="glass p-4 shadow rounded-xl border border-white/30">
+                    <label className="block text-sm font-medium text-primary-700 mb-2">Filter by Tags:</label>
                     <Select
                         isMulti
                         options={allTags}
@@ -210,7 +210,7 @@ function FeedbackList() {
                 </div>
                 {/* Feedback list based on active tab */}
                 {feedbackToDisplay.length === 0 ? (
-                    <div className="bg-white shadow rounded-lg p-4 text-gray-500">No feedback found.</div>
+                    <div className="text-center text-primary-500 font-inter py-8">No feedback found.</div>
                 ) : (
                     <div className="space-y-4">
                         {feedbackToDisplay.map((item) => (
@@ -238,7 +238,7 @@ function FeedbackList() {
             {/* Delete Confirmation Modal */}
             {showDeleteModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-                    <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6 relative animate-fade-in">
+                    <div className="glass rounded-xl shadow-lg max-w-md w-full p-6 relative animate-fade-in border border-white/30">
                         <button
                             className="absolute top-3 right-3 text-gray-400 hover:text-gray-600"
                             onClick={closeDeleteModal}
@@ -248,7 +248,7 @@ function FeedbackList() {
                         </button>
                         <div className="flex flex-col items-center">
                             <Trash2 className="h-10 w-10 text-red-500 mb-2" />
-                            <h2 className="text-lg font-semibold text-gray-900 mb-2">Delete Feedback?</h2>
+                            <h2 className="text-lg font-semibold text-primary-900 mb-2 font-poppins">Delete Feedback?</h2>
                             <p className="text-gray-600 text-center mb-4">Are you sure you want to delete this feedback? This action cannot be undone.</p>
                             {deleteError && (
                                 <div className="bg-red-50 border border-red-200 rounded-md p-2 mb-2 w-full text-center text-red-600 text-sm">

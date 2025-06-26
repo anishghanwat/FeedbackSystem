@@ -8,6 +8,8 @@ import models
 from models import User, Feedback, UserRole, Sentiment, FeedbackRequest, FeedbackRequestStatus, Tag, Notification
 from schemas import FeedbackCreate, FeedbackUpdate, DashboardStats, EmployeeFeedbackSummary, UserRegistration, UserUpdate, Tag as TagSchema
 from fastapi import HTTPException
+from collections import defaultdict
+from sqlalchemy import extract
 
 # Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -400,4 +402,164 @@ def mark_all_notifications_as_read(db: Session, user_id: int) -> bool:
     """Mark all notifications for a user as read."""
     db.query(Notification).filter(Notification.user_id == user_id).update({"read": True})
     db.commit()
-    return True 
+    return True
+
+def get_feedback_trends(manager_id: int, db: Session, days: int = 30):
+    # Returns feedback count per day for the last `days` days
+    from datetime import datetime, timedelta
+    end_date = datetime.utcnow().date()
+    start_date = end_date - timedelta(days=days-1)
+    feedbacks = db.query(Feedback).filter(
+        Feedback.manager_id == manager_id,
+        Feedback.created_at >= start_date
+    ).all()
+    trends = defaultdict(int)
+    for fb in feedbacks:
+        date_str = fb.created_at.strftime('%Y-%m-%d')
+        trends[date_str] += 1
+    # Fill missing days
+    result = []
+    for i in range(days):
+        d = start_date + timedelta(days=i)
+        ds = d.strftime('%Y-%m-%d')
+        result.append({'date': ds, 'count': trends.get(ds, 0)})
+    return result
+
+def get_ack_rate_trends(manager_id: int, db: Session, days: int = 30):
+    # Returns acknowledged/total feedback per day for the last `days` days
+    from datetime import datetime, timedelta
+    end_date = datetime.utcnow().date()
+    start_date = end_date - timedelta(days=days-1)
+    feedbacks = db.query(Feedback).filter(
+        Feedback.manager_id == manager_id,
+        Feedback.created_at >= start_date
+    ).all()
+    ack = defaultdict(lambda: {'acknowledged': 0, 'total': 0})
+    for fb in feedbacks:
+        date_str = fb.created_at.strftime('%Y-%m-%d')
+        ack[date_str]['total'] += 1
+        if fb.acknowledged:
+            ack[date_str]['acknowledged'] += 1
+    result = []
+    for i in range(days):
+        d = start_date + timedelta(days=i)
+        ds = d.strftime('%Y-%m-%d')
+        result.append({'date': ds, 'acknowledged': ack[ds]['acknowledged'], 'total': ack[ds]['total']})
+    return result
+
+def get_top_tags(manager_id: int, db: Session, top_n: int = 10):
+    # Returns top N tags by count for feedback given by manager
+    tag_counts = defaultdict(int)
+    feedbacks = db.query(Feedback).filter(Feedback.manager_id == manager_id).all()
+    for fb in feedbacks:
+        for tag in fb.tags:
+            tag_counts[tag.name] += 1
+    sorted_tags = sorted(tag_counts.items(), key=lambda x: x[1], reverse=True)[:top_n]
+    return [{'tag': t[0], 'count': t[1]} for t in sorted_tags]
+
+def get_unacknowledged_feedback(manager_id: int, db: Session):
+    # Returns list of unacknowledged feedback given by manager
+    feedbacks = db.query(Feedback).filter(
+        Feedback.manager_id == manager_id,
+        Feedback.acknowledged == False
+    ).all()
+    result = []
+    for fb in feedbacks:
+        result.append({
+            'id': fb.id,
+            'employee_name': fb.employee.name if fb.employee else '',
+            'strengths': fb.strengths,
+            'improvements': fb.improvements,
+            'created_at': fb.created_at,
+            'tags': [t.name for t in fb.tags]
+        })
+    return result
+
+def get_employee_feedback_trends(employee_id: int, db: Session, days: int = 30):
+    # Returns feedback count per day for the last `days` days (feedback received by employee)
+    from datetime import datetime, timedelta
+    end_date = datetime.utcnow().date()
+    start_date = end_date - timedelta(days=days-1)
+    feedbacks = db.query(Feedback).filter(
+        Feedback.employee_id == employee_id,
+        Feedback.created_at >= start_date
+    ).all()
+    trends = defaultdict(int)
+    for fb in feedbacks:
+        date_str = fb.created_at.strftime('%Y-%m-%d')
+        trends[date_str] += 1
+    # Fill missing days
+    result = []
+    for i in range(days):
+        d = start_date + timedelta(days=i)
+        ds = d.strftime('%Y-%m-%d')
+        result.append({'date': ds, 'count': trends.get(ds, 0)})
+    return result
+
+def get_employee_sentiment_trends(employee_id: int, db: Session, days: int = 30):
+    # Returns sentiment distribution over time for feedback received by employee
+    from datetime import datetime, timedelta
+    end_date = datetime.utcnow().date()
+    start_date = end_date - timedelta(days=days-1)
+    feedbacks = db.query(Feedback).filter(
+        Feedback.employee_id == employee_id,
+        Feedback.created_at >= start_date
+    ).all()
+    sentiment_data = defaultdict(lambda: {'positive': 0, 'neutral': 0, 'negative': 0, 'total': 0})
+    for fb in feedbacks:
+        date_str = fb.created_at.strftime('%Y-%m-%d')
+        sentiment_data[date_str]['total'] += 1
+        sentiment_data[date_str][fb.sentiment.value] += 1
+    result = []
+    for i in range(days):
+        d = start_date + timedelta(days=i)
+        ds = d.strftime('%Y-%m-%d')
+        data = sentiment_data[ds]
+        result.append({
+            'date': ds, 
+            'positive': data['positive'], 
+            'neutral': data['neutral'], 
+            'negative': data['negative'],
+            'total': data['total']
+        })
+    return result
+
+def get_employee_top_tags(employee_id: int, db: Session, top_n: int = 10):
+    # Returns top N tags by count for feedback received by employee
+    tag_counts = defaultdict(int)
+    feedbacks = db.query(Feedback).filter(Feedback.employee_id == employee_id).all()
+    for fb in feedbacks:
+        for tag in fb.tags:
+            tag_counts[tag.name] += 1
+    sorted_tags = sorted(tag_counts.items(), key=lambda x: x[1], reverse=True)[:top_n]
+    return [{'tag': t[0], 'count': t[1]} for t in sorted_tags]
+
+def get_employee_ack_status(employee_id: int, db: Session):
+    # Returns acknowledgment status summary for employee
+    feedbacks = db.query(Feedback).filter(Feedback.employee_id == employee_id).all()
+    total = len(feedbacks)
+    acknowledged = len([f for f in feedbacks if f.acknowledged])
+    unacknowledged = total - acknowledged
+    
+    # Get recent unacknowledged feedback (last 5)
+    recent_unacknowledged = db.query(Feedback).filter(
+        Feedback.employee_id == employee_id,
+        Feedback.acknowledged == False
+    ).order_by(Feedback.created_at.desc()).limit(5).all()
+    
+    return {
+        'total': total,
+        'acknowledged': acknowledged,
+        'unacknowledged': unacknowledged,
+        'ack_rate': (acknowledged / total * 100) if total > 0 else 0,
+        'recent_unacknowledged': [
+            {
+                'id': fb.id,
+                'manager_name': fb.manager.name if fb.manager else 'Anonymous',
+                'strengths': fb.strengths,
+                'improvements': fb.improvements,
+                'created_at': fb.created_at,
+                'tags': [t.name for t in fb.tags]
+            } for fb in recent_unacknowledged
+        ]
+    } 

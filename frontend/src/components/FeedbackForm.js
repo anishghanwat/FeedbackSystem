@@ -124,27 +124,27 @@ function FeedbackForm() {
             <div className="mb-6">
                 <button
                     onClick={() => navigate('/feedback')}
-                    className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700"
+                    className="inline-flex items-center text-sm text-primary-600 hover:text-primary-700 font-medium font-inter"
                 >
                     <ArrowLeft className="h-4 w-4 mr-1" />
                     Back to Feedback List
                 </button>
             </div>
 
-            <div className="bg-white shadow rounded-lg">
-                <div className="px-6 py-4 border-b border-gray-200">
-                    <h2 className="text-lg font-medium text-gray-900">{isEdit ? 'Edit Feedback' : 'Create New Feedback'}</h2>
+            <div className="glass shadow rounded-xl border border-white/30">
+                <div className="px-6 py-4 border-b border-white/30">
+                    <h2 className="text-lg font-semibold text-primary-900 font-poppins">{isEdit ? 'Edit Feedback' : 'Create New Feedback'}</h2>
                 </div>
 
                 <form onSubmit={handleSubmit} className="p-6 space-y-6">
                     {error && (
                         <div className="bg-red-50 border border-red-200 rounded-md p-4">
-                            <p className="text-sm text-red-600">{error}</p>
+                            <p className="text-sm text-red-600 font-inter">{error}</p>
                         </div>
                     )}
 
                     <div>
-                        <label htmlFor="employee_id" className="block text-sm font-medium text-gray-700 mb-2">
+                        <label htmlFor="employee_id" className="block text-sm font-medium text-primary-700 mb-2 font-inter">
                             Employee
                         </label>
                         <select
@@ -154,7 +154,7 @@ function FeedbackForm() {
                             onChange={handleChange}
                             required
                             disabled={isEdit}
-                            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 font-inter"
                         >
                             <option value="">Select an employee</option>
                             {employees
@@ -176,7 +176,7 @@ function FeedbackForm() {
                                     onChange={e => setFormData(prev => ({ ...prev, anonymous: e.target.checked, visible_to_manager: false }))}
                                     className="form-checkbox h-4 w-4 text-primary-600"
                                 />
-                                <span className="ml-2 text-sm text-gray-700">Submit anonymously</span>
+                                <span className="ml-2 text-sm text-primary-700 font-inter">Submit anonymously</span>
                             </label>
                             {formData.anonymous && (
                                 <div className="ml-6 mt-1">
@@ -187,7 +187,7 @@ function FeedbackForm() {
                                             onChange={e => setFormData(prev => ({ ...prev, visible_to_manager: e.target.checked }))}
                                             className="form-checkbox h-4 w-4 text-primary-600"
                                         />
-                                        <span className="ml-2 text-sm text-gray-700">Allow manager to see my name</span>
+                                        <span className="ml-2 text-sm text-primary-700 font-inter">Allow manager to see my name</span>
                                     </label>
                                 </div>
                             )}
@@ -195,7 +195,7 @@ function FeedbackForm() {
                     )}
 
                     <div>
-                        <label htmlFor="strengths" className="block text-sm font-medium text-gray-700 mb-2">
+                        <label htmlFor="strengths" className="block text-sm font-medium text-primary-700 mb-2 font-inter">
                             Strengths
                         </label>
                         <textarea
@@ -206,12 +206,12 @@ function FeedbackForm() {
                             onChange={handleChange}
                             required
                             placeholder="Describe the employee's strengths and positive contributions..."
-                            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 font-inter"
                         />
                     </div>
 
                     <div>
-                        <label htmlFor="improvements" className="block text-sm font-medium text-gray-700 mb-2">
+                        <label htmlFor="improvements" className="block text-sm font-medium text-primary-700 mb-2 font-inter">
                             Areas to Improve
                         </label>
                         <textarea
@@ -222,12 +222,12 @@ function FeedbackForm() {
                             onChange={handleChange}
                             required
                             placeholder="Describe areas where the employee can improve..."
-                            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 font-inter"
                         />
                     </div>
 
                     <div>
-                        <label htmlFor="sentiment" className="block text-sm font-medium text-gray-700 mb-2">
+                        <label htmlFor="sentiment" className="block text-sm font-medium text-primary-700 mb-2 font-inter">
                             Overall Sentiment
                         </label>
                         <select
@@ -236,7 +236,7 @@ function FeedbackForm() {
                             value={formData.sentiment}
                             onChange={handleChange}
                             required
-                            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 font-inter"
                         >
                             <option value="positive">Positive</option>
                             <option value="neutral">Neutral</option>
@@ -245,7 +245,7 @@ function FeedbackForm() {
                     </div>
 
                     <div>
-                        <label htmlFor="tags" className="block text-sm font-medium text-gray-700 mb-2">
+                        <label htmlFor="tags" className="block text-sm font-medium text-primary-700 mb-2 font-inter">
                             Tags
                         </label>
                         <CreatableSelect
@@ -263,14 +263,14 @@ function FeedbackForm() {
                         <button
                             type="button"
                             onClick={() => navigate('/feedback')}
-                            className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                            className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 font-inter"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
                             disabled={loading}
-                            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
+                            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 font-inter"
                         >
                             <Save className="h-4 w-4 mr-2" />
                             {loading ? (isEdit ? 'Saving...' : 'Creating...') : (isEdit ? 'Save Changes' : 'Create Feedback')}

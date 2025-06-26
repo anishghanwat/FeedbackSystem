@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr, validator
-from typing import Optional, List
+from typing import Optional, List, Dict
 from datetime import datetime
 from models import UserRole, Sentiment, FeedbackRequestStatus, Tag
 
@@ -173,4 +173,68 @@ class Notification(BaseModel):
         from_attributes = True
 
 class Token(BaseModel):
-    access_token: str 
+    access_token: str
+
+# --- Analytics Schemas ---
+class FeedbackTrend(BaseModel):
+    date: str  # e.g. '2024-06-01'
+    count: int
+
+class AckRateTrend(BaseModel):
+    date: str
+    acknowledged: int
+    total: int
+
+class TopTag(BaseModel):
+    tag: str
+    count: int
+
+class UnacknowledgedFeedback(BaseModel):
+    id: int
+    employee_name: str
+    strengths: str
+    improvements: str
+    created_at: datetime
+    tags: List[str] = []
+
+# List wrappers (if needed for OpenAPI clarity)
+class FeedbackTrendList(BaseModel):
+    trends: List[FeedbackTrend]
+
+class AckRateTrendList(BaseModel):
+    trends: List[AckRateTrend]
+
+class TopTagList(BaseModel):
+    tags: List[TopTag]
+
+class UnacknowledgedFeedbackList(BaseModel):
+    feedback: List[UnacknowledgedFeedback]
+
+class EmployeeSentimentTrend(BaseModel):
+    date: str
+    positive: int
+    neutral: int
+    negative: int
+    total: int
+
+class EmployeeUnacknowledgedFeedback(BaseModel):
+    id: int
+    manager_name: str
+    strengths: str
+    improvements: str
+    created_at: datetime
+    tags: List[str] = []
+
+class EmployeeAckStatus(BaseModel):
+    total: int
+    acknowledged: int
+    unacknowledged: int
+    ack_rate: float
+    recent_unacknowledged: List[EmployeeUnacknowledgedFeedback]
+
+class EmployeeAckStatusResponse(BaseModel):
+    status: EmployeeAckStatus
+
+# List wrappers for employee analytics
+class EmployeeSentimentTrendList(BaseModel):
+    trends: List[EmployeeSentimentTrend] 
