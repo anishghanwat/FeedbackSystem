@@ -74,7 +74,10 @@ function Register() {
         setLoading(true);
 
         try {
-            const response = await fetch((process.env.REACT_APP_API_URL || 'http://localhost:8000') + '/auth/register', {
+            if (!process.env.REACT_APP_API_URL) {
+                throw new Error('REACT_APP_API_URL is not set! Registration will fail.');
+            }
+            const response = await fetch(process.env.REACT_APP_API_URL + '/auth/register', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
