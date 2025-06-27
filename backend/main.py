@@ -23,7 +23,7 @@ app = FastAPI(
 # FRONTEND_ORIGINS env var should be set to a comma-separated list of allowed frontend URLs
 origins = os.environ.get(
     "FRONTEND_ORIGINS",
-    # "http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001"
+    "http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001"
 ).split(",")
 
 print("CORS allowed origins:", origins)
