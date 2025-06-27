@@ -105,6 +105,29 @@ InternshipAssignment/
 └── README.md
 ```
 
+## 🌐 Live Deployment
+
+- **Frontend (Vercel):** [https://feedback-system-seven-delta.vercel.app](https://feedback-system-seven-delta.vercel.app)
+
+- **Backend (Render):** [https://feedbacksystem-n26h.onrender.com](https://feedbacksystem-n26h.onrender.com)
+
+---
+
+## ⚙️ Deployment & Environment
+
+### Environment Variables
+
+#### Backend (Render)
+- `FRONTEND_ORIGINS` — Comma-separated list of allowed frontend URLs (e.g. `https://feedback-system-seven-delta.vercel.app,https://feedbacksystem-frontend.onrender.com`)
+- `SECRET_KEY`, `DATABASE_URL`, etc. (see code for details)
+
+#### Frontend (Vercel/Render)
+- `REACT_APP_API_URL` — URL of your backend (e.g. `https://feedbacksystem-n26h.onrender.com`)
+
+### CORS Troubleshooting
+- If you get CORS errors, make sure your backend's `FRONTEND_ORIGINS` includes all frontend URLs (Vercel, Render, localhost for dev).
+- Always redeploy the backend after changing environment variables.
+
 ## 🚀 Quick Start
 
 ### Prerequisites
