@@ -220,6 +220,12 @@ function FeedbackList() {
                         placeholder="Select tags to filter..."
                         className="react-select-container"
                         classNamePrefix="react-select"
+                        styles={{
+                            menu: (provided) => ({ ...provided, zIndex: 9999 }),
+                            menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+                        }}
+                        menuPortalTarget={typeof window !== 'undefined' ? document.body : null}
+                        menuPosition="fixed"
                     />
                 </div>
                 {/* Feedback list based on active tab */}

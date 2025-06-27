@@ -52,7 +52,7 @@ def read_root():
 @app.get("/health")
 def health_check():
     """Health check endpoint for deployment monitoring."""
-    return {"status": "healthy"}
+    return {"status": "healthy"} 
 
 @app.post("/seed-demo-data")
 async def seed_demo_data():
