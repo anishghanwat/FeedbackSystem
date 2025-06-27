@@ -138,39 +138,6 @@ function ManagerDashboard() {
 
     return (
         <div className="space-y-6">
-            {/* Team Members */}
-            <div className="glass p-6 mb-6 border border-white/30 rounded-xl shadow">
-                <div className="px-6 py-4 border-b border-white/30">
-                    <h3 className="text-lg font-semibold text-primary-900 font-poppins">Team Members</h3>
-                </div>
-                <div className="divide-y divide-white/30">
-                    {employees.map((employee) => (
-                        <div key={employee.id} className="px-6 py-4 flex items-center justify-between">
-                            <div>
-                                <h4 className="text-sm font-semibold text-primary-900 font-poppins">{employee.name}</h4>
-                                <p className="text-sm text-primary-500 font-inter">{employee.username}</p>
-                            </div>
-                            <div className="flex space-x-2">
-                                <Link
-                                    to={`/feedback/new?employee=${employee.id}`}
-                                    className="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-lg text-primary-700 bg-primary-100/80 hover:bg-primary-200/80 font-inter transition-colors duration-200"
-                                >
-                                    <Plus className="h-3 w-3 mr-1" />
-                                    Give Feedback
-                                </Link>
-                                <button
-                                    onClick={() => handleDownloadPDF(employee)}
-                                    className="inline-flex items-center px-3 py-1 border border-blue-300 text-sm font-medium rounded-lg text-blue-700 bg-blue-100/80 hover:bg-blue-200/80 font-inter transition-colors duration-200"
-                                    title="Download all feedback for this employee as PDF"
-                                >
-                                    Download PDF
-                                </button>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-
             {/* Pending Feedback Requests */}
             {pendingRequests.length > 0 && (
                 <div className="glass p-6 mb-6 border border-white/30 rounded-xl shadow">
@@ -410,6 +377,39 @@ function ManagerDashboard() {
                             </div>
                         )}
                     </div>
+                </div>
+            </div>
+
+            {/* Team Members (moved to end) */}
+            <div className="glass p-6 mb-6 border border-white/30 rounded-xl shadow">
+                <div className="px-6 py-4 border-b border-white/30">
+                    <h3 className="text-lg font-semibold text-primary-900 font-poppins">Team Members</h3>
+                </div>
+                <div className="divide-y divide-white/30">
+                    {employees.map((employee) => (
+                        <div key={employee.id} className="px-6 py-4 flex items-center justify-between">
+                            <div>
+                                <h4 className="text-sm font-semibold text-primary-900 font-poppins">{employee.name}</h4>
+                                <p className="text-sm text-primary-500 font-inter">{employee.username}</p>
+                            </div>
+                            <div className="flex space-x-2">
+                                <Link
+                                    to={`/feedback/new?employee=${employee.id}`}
+                                    className="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-lg text-primary-700 bg-primary-100/80 hover:bg-primary-200/80 font-inter transition-colors duration-200"
+                                >
+                                    <Plus className="h-3 w-3 mr-1" />
+                                    Give Feedback
+                                </Link>
+                                <button
+                                    onClick={() => handleDownloadPDF(employee)}
+                                    className="inline-flex items-center px-3 py-1 border border-blue-300 text-sm font-medium rounded-lg text-blue-700 bg-blue-100/80 hover:bg-blue-200/80 font-inter transition-colors duration-200"
+                                    title="Download all feedback for this employee as PDF"
+                                >
+                                    Download PDF
+                                </button>
+                            </div>
+                        </div>
+                    ))}
                 </div>
             </div>
         </div>
