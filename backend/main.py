@@ -3,12 +3,13 @@ main.py - FastAPI application entry point for the Lightweight Feedback System.
 Handles app creation, CORS setup, and router inclusion for authentication, feedback, users, and notifications.
 """
 
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import models
+import database
+import os
 from database import engine
 from routers import auth, feedback, users, notifications
-import os
 
 # Create database tables if they don't exist
 models.Base.metadata.create_all(bind=engine)
@@ -51,4 +52,33 @@ def read_root():
 @app.get("/health")
 def health_check():
     """Health check endpoint for deployment monitoring."""
-    return {"status": "healthy"} 
+    return {"status": "healthy"}
+
+@app.post("/seed-demo-data")
+async def seed_demo_data():
+    """
+    Endpoint to seed demo data into the database.
+    This should only be used in development or for initial setup.
+    """
+    try:
+        # Import and run the seed function
+        from seed_demo_data import seed
+        seed()
+        return {"message": "Demo data seeded successfully!", "status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error seeding data: {str(e)}")
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize database and seed demo data in development."""
+    # Create tables
+    models.Base.metadata.create_all(bind=engine)
+    
+    # Seed demo data in development mode
+    if os.getenv("ENVIRONMENT", "development") == "development":
+        try:
+            from seed_demo_data import seed
+            seed()
+            print("✅ Demo data seeded successfully!")
+        except Exception as e:
+            print(f"⚠️  Could not seed demo data: {e}") 
